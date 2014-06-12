@@ -1,7 +1,8 @@
+#![feature(globs)]
 extern crate tox;
 extern crate debug;
 
-use tox::core::{Tox, NameChange, StatusMessage, FriendMessage};
+use tox::core::*;
 
 fn main() {
     let tox = Tox::new(false).unwrap();
@@ -14,12 +15,30 @@ fn main() {
     tox.set_name("mahkoh".to_string()).ok().unwrap();
     loop {
         for ev in tox.events() {
-            match ev {
-                NameChange(id, name) => println!("NameChange({}, \"{}\")", id, name),
-                StatusMessage(id, msg) => println!("StatusMessage({}, \"{}\")", id, msg),
-                FriendMessage(id, msg) => println!("FriendMessage({}, \"{}\")", id, msg),
-                _ => println!("{:?}", ev),
+            match ev.clone() {
+                FriendRequest(..)       => println!("FriendRequest(..)       "),
+                FriendMessage(..)       => println!("FriendMessage(..)       "),
+                FriendAction(..)        => println!("FriendAction(..)        "),
+                NameChange(..)          => println!("NameChange(..)          "),
+                StatusMessage(id, _)       => {
+                    println!("StatusMessage(..)       ");
+                    let _ = tox.send_message(id, "invite".to_string());
+                },
+                UserStatus(..)          => println!("UserStatus(..)          "),
+                TypingChange(..)        => println!("TypingChange(..)        "),
+                ReadReceipt(..)         => println!("ReadReceipt(..)         "),
+                ConnectionStatus(..)    => println!("ConnectionStatus(..)    "),
+                GroupInvite(id, group)  => {
+                    println!("GroupInvite(..)         ");
+                    let _ = tox.join_groupchat(id, group);
+                },
+                GroupMessage(_, _, msg) => println!("GroupMessage(_, _, {})", msg),
+                GroupNamelistChange(..) => println!("GroupNamelistChange(..) "),
+                FileSendRequest(..)     => println!("FileSendRequest(..)     "),
+                FileControl(..)         => println!("FileControl(..)         "),
+                FileData(..)            => println!("FileData(..)            "),
             }
+            println!("{:?}", ev);
         }
         std::io::timer::sleep(50);
     }

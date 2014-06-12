@@ -11,6 +11,7 @@ pub static MAX_STATUSMESSAGE_LENGTH: uint = 1007u;
 pub static ID_CLIENT_SIZE: uint = 32u;
 pub static ADDRESS_SIZE: uint = ID_CLIENT_SIZE + 6u;
 
+#[deriving(Clone)]
 pub enum Event {
     FriendRequest(Box<ClientId>, String),
     FriendMessage(i32, String),
@@ -34,6 +35,16 @@ pub struct Address {
     nospam: [u8, ..4],
     #[allow(dead_code)]
     checksum: [u8, ..2],
+}
+
+impl Clone for Address {
+    fn clone(&self) -> Address {
+        Address {
+            id: self.id.clone(),
+            nospam: self.nospam,
+            checksum: self.checksum,
+        }
+    }
 }
 
 impl Address {
@@ -114,6 +125,12 @@ pub struct ClientId {
     pub raw: [u8, ..ID_CLIENT_SIZE],
 }
 
+impl Clone for ClientId {
+    fn clone(&self) -> ClientId {
+        ClientId { raw: self.raw }
+    }
+}
+
 impl fmt::Show for ClientId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for &n in self.raw.iter() {
@@ -138,12 +155,14 @@ impl FromStr for ClientId {
     }
 }
 
+#[deriving(Clone, PartialEq, Eq)]
 pub enum ConnectionStatus {
     Online,
     Offline,
 }
 
 #[repr(C)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum UserStatus {
     UserStatusNone = TOX_USERSTATUS_NONE,
     UserStatusAway = TOX_USERSTATUS_AWAY,
@@ -151,6 +170,7 @@ pub enum UserStatus {
 }
 
 #[repr(C)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum ChatChange {
     ChatChangePeerAdd = TOX_CHAT_CHANGE_PEER_ADD,
     ChatChangePeerDel = TOX_CHAT_CHANGE_PEER_DEL,
@@ -158,6 +178,7 @@ pub enum ChatChange {
 }
 
 #[repr(C)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum ControlType {
     ControlAccept = TOX_FILECONTROL_ACCEPT,
     ControlPause = TOX_FILECONTROL_PAUSE,
@@ -167,6 +188,7 @@ pub enum ControlType {
 }
 
 #[repr(C)]
+#[deriving(Clone, PartialEq, Eq)]
 pub enum Faerr {
     FaerrToolong = TOX_FAERR_TOOLONG,
     FaerrNomessage = TOX_FAERR_NOMESSAGE,
@@ -178,6 +200,7 @@ pub enum Faerr {
     FaerrNomem = TOX_FAERR_NOMEM,
 }
 
+#[deriving(Clone, PartialEq, Eq)]
 pub enum TransferType {
     Receiving,
     Sending,

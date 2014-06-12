@@ -876,8 +876,8 @@ extern fn on_connection_status(_: *mut Tox, friendnumber: i32, status: u8,
 extern fn on_group_invite(_: *mut Tox, friendnumber: i32, group_public_key: *mut u8,
                           internal: *mut c_void) {
     let internal = get_int!(internal);
-    let group_public_key = unsafe { ptr::read(group_public_key as *_) };
-    send_or_stop!(internal, GroupInvite(friendnumber, group_public_key));
+    let group = ClientId { raw: unsafe { ptr::read(group_public_key as *_) } };
+    send_or_stop!(internal, GroupInvite(friendnumber, box group));
 }
 
 extern fn on_group_message(_: *mut Tox, groupnumber: i32, frindgroupnumber: i32,
