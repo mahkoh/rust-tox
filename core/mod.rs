@@ -1,3 +1,5 @@
+use std::{fmt};
+use std::from_str::{FromStr};
 use self::ll::*;
 pub use self::backend::Event;
 
@@ -11,13 +13,97 @@ pub static ID_CLIENT_SIZE: uint = 32u;
 pub static ADDRESS_SIZE: uint = ID_CLIENT_SIZE + 6u;
 
 pub struct Address {
-    pub id: ClientId,
-    pub no_spam: [u8, ..4],
-    pub checksum: [u8, ..2],
+    id: ClientId,
+    nospam: [u8, ..4],
+    #[allow(dead_code)]
+    checksum: [u8, ..2],
+}
+
+impl Address {
+    fn checksum(&self) -> [u8, ..2] {
+        let mut check = [0u8, 0u8];
+        for (i, &x) in self.id.raw.iter().enumerate() {
+            check[i % 2] ^= x;
+        }
+        for i in range(0u, 4) {
+            check[(ID_CLIENT_SIZE + i) % 2] ^= self.nospam[i];
+        }
+        check
+    }
+}
+
+impl fmt::Show for Address {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let _ = self.id.fmt(fmt);
+        try!(write!(fmt, "{:x}", self.nospam[0]));
+        try!(write!(fmt, "{:x}", self.nospam[1]));
+        try!(write!(fmt, "{:x}", self.nospam[2]));
+        try!(write!(fmt, "{:x}", self.nospam[3]));
+        let check = self.checksum();
+        try!(write!(fmt, "{:x}", check[0]));
+        try!(write!(fmt, "{:x}", check[1]));
+        Ok(())
+    }
+}
+
+impl FromStr for Address {
+    fn from_str(s: &str) -> Option<Address> {
+        if s.len() != 2 * ADDRESS_SIZE {
+            return None;
+        }
+
+        let mut id     = [0u8, ..32];
+        let mut nospam = [0u8, ..4];
+        let mut check  = [0u8, ..2];
+
+        if parse_hex(s.slice(0, 2*ID_CLIENT_SIZE), id.as_mut_slice()).is_err() {
+            return None;
+        }
+        if parse_hex(s.slice(2*ID_CLIENT_SIZE, 2*ID_CLIENT_SIZE+8),
+                             nospam.as_mut_slice()).is_err() {
+            return None;
+        }
+        if parse_hex(s.slice(2*ID_CLIENT_SIZE+8, 2*ADDRESS_SIZE),
+                             check.as_mut_slice()).is_err() {
+            return None;
+        }
+
+        let addr = Address { id: ClientId { raw: id }, nospam: nospam, checksum: check };
+        if addr.checksum().as_slice() != check.as_slice() {
+            return None;
+        }
+        Some(addr)
+    }
+}
+
+pub fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
+    if s.len() != 2*buf.len() {
+        return Err(());
+    }
+    for i in range(0u, buf.len()) {
+        for j in range(0u, 2) {
+            buf[i] = (buf[i] << 4) + match s[2*i + j] as char {
+                c @ '0' .. '9' => (c as u8) - ('0' as u8),
+                c @ 'a' .. 'f' => (c as u8) - ('a' as u8) + 10,
+                c @ 'A' .. 'F' => (c as u8) - ('A' as u8) + 10,
+                _              => return Err(()),
+            }
+        }
+    }
+    return Ok(());
 }
 
 pub struct ClientId {
-    raw: [u8, ..ID_CLIENT_SIZE],
+    pub raw: [u8, ..ID_CLIENT_SIZE],
+}
+
+impl fmt::Show for ClientId {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        for &n in self.raw.iter() {
+            try!(write!(fmt, "{:x}", n));
+        }
+        Ok(())
+    }
 }
 
 pub enum ConnectionStatus {
