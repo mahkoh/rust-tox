@@ -4,13 +4,16 @@ use std::io::{timer};
 use std::raw::{Slice};
 use std::mem::{transmute};
 use core::ll::*;
-use core::{Address, ClientId, ConnectionStatus, Online, Offline, MAX_NAME_LENGTH,
-           UserStatus, UserStatusAway, UserStatusNone, UserStatusBusy, ChatChange,
+use core::{Address, ClientId, Online, Offline, MAX_NAME_LENGTH,
+           UserStatusAway, UserStatusNone, UserStatusBusy,
            ChatChangePeerAdd, ChatChangePeerDel, ChatChangePeerName, TransferType,
-           Sending, Receiving, ControlType, ControlAccept, ControlKill, ControlPause,
+           Sending, Receiving, ControlAccept, ControlKill, ControlPause,
            ControlFinished, ControlResumeBroken, Faerr, FaerrToolong, FaerrNomessage,
            FaerrOwnkey, FaerrAlreadysent, FaerrUnknown, FaerrBadchecksum,
-           FaerrSetnewnospam, FaerrNomem};
+           FaerrSetnewnospam, FaerrNomem, Event, FriendRequest, FriendMessage,
+           FriendAction, NameChange, StatusMessage, UserStatus, TypingChange, ReadReceipt,
+           ConnectionStatus, GroupInvite, GroupMessage, GroupNamelistChange,
+           FileSendRequest, FileControl, FileData};
 use libc::{c_void};
 
 pub enum Control {
@@ -763,24 +766,6 @@ impl Backend {
 struct Internal {
     stop: bool,
     events: Sender<Event>,
-}
-
-pub enum Event {
-    FriendRequest(Box<ClientId>, String),
-    FriendMessage(i32, String),
-    FriendAction(i32, String),
-    NameChange(i32, String),
-    StatusMessage(i32, String),
-    UserStatus(i32, UserStatus),
-    TypingChange(i32, bool),
-    ReadReceipt(i32, u32),
-    ConnectionStatus(i32, ConnectionStatus),
-    GroupInvite(i32, Box<ClientId>),
-    GroupMessage(i32, i32, String),
-    GroupNamelistChange(i32, i32, ChatChange),
-    FileSendRequest(i32, u8, u64, Vec<u8>),
-    FileControl(i32, TransferType, u8, ControlType, Vec<u8>),
-    FileData(i32, u8, Vec<u8>),
 }
 
 macro_rules! get_int {

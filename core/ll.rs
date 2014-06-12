@@ -56,6 +56,7 @@ pub static TOX_FILECONTROL_PAUSE: ::libc::c_uint = 1;
 pub static TOX_FILECONTROL_KILL: ::libc::c_uint = 2;
 pub static TOX_FILECONTROL_FINISHED: ::libc::c_uint = 3;
 pub static TOX_FILECONTROL_RESUME_BROKEN: ::libc::c_uint = 4;
+#[link(name = "toxcore")]
 extern "C" {
     pub fn tox_get_address(tox: *mut Tox, address: *mut uint8_t);
     pub fn tox_add_friend(tox: *mut Tox, address: *mut uint8_t,

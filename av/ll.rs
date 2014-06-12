@@ -133,6 +133,7 @@ pub struct Struct__ToxAvCodecSettings {
     pub jbuf_capacity: uint32_t,
 }
 pub type ToxAvCodecSettings = Struct__ToxAvCodecSettings;
+#[link(name = "toxcore")]
 extern "C" {
     pub static av_DefaultSettings: ToxAvCodecSettings;
     pub fn imaxabs(__n: intmax_t) -> intmax_t;

@@ -1,6 +1,6 @@
 #![feature(globs, macro_rules)]
 #![crate_type = "lib"]
-#![crate_id = "rust-tox"]
+#![crate_id = "tox"]
 #![allow(non_camel_case_types)]
 
 extern crate libc;

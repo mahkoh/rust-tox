@@ -1,7 +1,6 @@
 use std::{fmt};
 use std::from_str::{FromStr};
 use self::ll::*;
-pub use self::backend::Event;
 
 mod backend;
 mod ll;
@@ -11,6 +10,24 @@ pub static MAX_MESSAGE_LENGTH: uint = 1368u;
 pub static MAX_STATUSMESSAGE_LENGTH: uint = 1007u;
 pub static ID_CLIENT_SIZE: uint = 32u;
 pub static ADDRESS_SIZE: uint = ID_CLIENT_SIZE + 6u;
+
+pub enum Event {
+    FriendRequest(Box<ClientId>, String),
+    FriendMessage(i32, String),
+    FriendAction(i32, String),
+    NameChange(i32, String),
+    StatusMessage(i32, String),
+    UserStatus(i32, UserStatus),
+    TypingChange(i32, bool),
+    ReadReceipt(i32, u32),
+    ConnectionStatus(i32, ConnectionStatus),
+    GroupInvite(i32, Box<ClientId>),
+    GroupMessage(i32, i32, String),
+    GroupNamelistChange(i32, i32, ChatChange),
+    FileSendRequest(i32, u8, u64, Vec<u8>),
+    FileControl(i32, TransferType, u8, ControlType, Vec<u8>),
+    FileData(i32, u8, Vec<u8>),
+}
 
 pub struct Address {
     id: ClientId,
@@ -106,6 +123,21 @@ impl fmt::Show for ClientId {
     }
 }
 
+impl FromStr for ClientId {
+    fn from_str(s: &str) -> Option<ClientId> {
+        if s.len() != 2 * ID_CLIENT_SIZE {
+            return None;
+        }
+
+        let mut id = [0u8, ..ID_CLIENT_SIZE];
+
+        if parse_hex(s, id.as_mut_slice()).is_err() {
+            return None;
+        }
+        Some(ClientId { raw: id })
+    }
+}
+
 pub enum ConnectionStatus {
     Online,
     Offline,
@@ -152,7 +184,7 @@ pub enum TransferType {
 }
 
 pub struct Tox {
-    events: Receiver<backend::Event>,
+    events: Receiver<Event>,
     control: SyncSender<backend::Control>,
 }
 
@@ -422,11 +454,11 @@ impl Tox {
 }
 
 pub struct EventIter<'a> {
-    events: &'a mut Receiver<backend::Event>,
+    events: &'a mut Receiver<Event>,
 }
 
 impl<'a> Iterator<Event> for EventIter<'a> {
-    fn next(&mut self) -> Option<backend::Event> {
+    fn next(&mut self) -> Option<Event> {
         match self.events.try_recv() {
             Ok(t) => Some(t),
             _ => None,
