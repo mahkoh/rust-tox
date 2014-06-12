@@ -31,6 +31,27 @@ enum UserStatus {
     UserStatusBusy = TOX_USERSTATUS_BUSY,
 }
 
+#[repr(C)]
+enum ChatChange {
+    ChatChangePeerAdd = TOX_CHAT_CHANGE_PEER_ADD,
+    ChatChangePeerDel = TOX_CHAT_CHANGE_PEER_DEL,
+    ChatChangePeerName = TOX_CHAT_CHANGE_PEER_NAME,
+}
+
+#[repr(C)]
+enum ControlType {
+    ControlAccept = TOX_FILECONTROL_ACCEPT,
+    ControlPause = TOX_FILECONTROL_PAUSE,
+    ControlKill = TOX_FILECONTROL_KILL,
+    ControlFinished = TOX_FILECONTROL_FINISHED,
+    ControlResumeBroken = TOX_FILECONTROL_RESUME_BROKEN,
+}
+
+enum TransferType {
+    Receiving,
+    Sending,
+}
+
 /*
 struct Tox {
     backend: BackendCtrl, 

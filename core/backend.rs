@@ -1,10 +1,18 @@
 use std;
+use std::{ptr};
+use std::raw::{Slice};
+use std::mem::{transmute};
 use core::ll::*;
 use core::{Address, ClientId, ConnectionStatus, Online, Offline, MAX_NAME_LENGTH,
-           UserStatus, UserStatusAway, UserStatusNone, UserStatusBusy};
+           UserStatus, UserStatusAway, UserStatusNone, UserStatusBusy, ChatChange,
+           ChatChangePeerAdd, ChatChangePeerDel, ChatChangePeerName, TransferType,
+           Sending, Receiving, ControlType, ControlAccept, ControlKill, ControlPause,
+           ControlFinished, ControlResumeBroken};
+use libc::{c_void};
 
 pub struct Backend {
     raw: *mut Tox,
+    internal: Box<Internal>,
 }
 
 impl Backend {
@@ -490,7 +498,34 @@ impl Backend {
         }
     }
 
-    // pub fn new(ipv6enabled: bool) -> Tox { }
+    pub fn new(ipv6enabled: bool) -> Option<Backend> {
+        let tox = unsafe { tox_new(ipv6enabled as u8) };
+        if tox.is_null() {
+            return None;
+        }
+        let (send, recv) = channel();
+        let mut internal = box Internal { stop: false, events: send };
+        unsafe {
+            let ip = &mut *internal as *mut _ as *mut c_void;
+            tox_callback_friend_request(tox, Some(on_friend_request), ip);
+            tox_callback_friend_message(tox, Some(on_friend_message), ip);
+            tox_callback_friend_action(tox, Some(on_friend_action), ip);
+            tox_callback_name_change(tox, Some(on_name_change), ip);
+            tox_callback_status_message(tox, Some(on_status_message), ip);
+            tox_callback_user_status(tox, Some(on_user_status), ip);
+            tox_callback_typing_change(tox, Some(on_typing_change), ip);
+            tox_callback_read_receipt(tox, Some(on_read_receipt), ip);
+            tox_callback_connection_status(tox, Some(on_connection_status), ip);
+            tox_callback_group_invite(tox, Some(on_group_invite), ip);
+            tox_callback_group_message(tox, Some(on_group_message), ip);
+            tox_callback_group_action(tox, Some(on_group_action), ip);
+            tox_callback_group_namelist_change(tox, Some(on_group_namelist_change), ip);
+            tox_callback_file_send_request(tox, Some(on_file_send_request), ip);
+            tox_callback_file_control(tox, Some(on_file_control), ip);
+            tox_callback_file_data(tox, Some(on_file_data), ip);
+        }
+        Some(Backend { raw: tox, internal: internal })
+    }
 
     pub fn save(&mut self) -> Vec<u8> {
         let size = unsafe { tox_size(self.raw) as uint };
@@ -508,4 +543,208 @@ impl Backend {
             _ => Err(()),
         }
     }
+}
+
+struct Internal {
+    stop: bool,
+    events: Sender<Event>,
+}
+
+pub enum Event {
+    FriendRequest(Box<ClientId>, String),
+    FriendMessage(i32, String),
+    FriendAction(i32, String),
+    NameChange(i32, String),
+    StatusMessage(i32, String),
+    UserStatus(i32, UserStatus),
+    TypingChange(i32, bool),
+    ReadReceipt(i32, u32),
+    ConnectionStatus(i32, ConnectionStatus),
+    GroupInvite(i32, Box<ClientId>),
+    GroupMessage(i32, i32, String),
+    GroupNamelistChange(i32, i32, ChatChange),
+    FileSendRequest(i32, u8, u64, Vec<u8>),
+    FileControl(i32, TransferType, u8, ControlType, Vec<u8>),
+    FileData(i32, u8, Vec<u8>),
+}
+
+macro_rules! get_int {
+    ($i:ident) => {
+        unsafe {
+            let internal = transmute::<_, &mut Internal>($i);
+            if internal.stop { return }
+            internal
+        }
+    }
+}
+
+macro_rules! send_or_stop {
+    ($internal:ident, $event:expr) => {
+        match $internal.events.send_opt($event) {
+            Ok(()) => { },
+            _ => $internal.stop = true,
+        }
+    }
+}
+
+macro_rules! parse_string {
+    ($p:ident, $l:ident) => {
+        {
+            let slice = to_slice($p as *u8, $l as uint);
+            match std::str::from_utf8(slice) {
+                Some(s) => s.to_string(),
+                None => return,
+            }
+        }
+    }
+}
+
+fn to_slice<T>(p: *T, l: uint) -> &[T] {
+    unsafe { transmute(Slice { data: p, len: l }) }
+}
+
+extern fn on_friend_request(_: *mut Tox, public_key: *u8, data: *u8, length: u16,
+                            internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let msg = parse_string!(data, length);
+    let id = ClientId { raw: unsafe { ptr::read(public_key as *_) } };
+    send_or_stop!(internal, FriendRequest(box id, msg));
+}
+
+extern fn on_friend_message(_: *mut Tox, friendnumber: i32, msg: *mut u8, length: u16,
+                            internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let msg = parse_string!(msg, length);
+    send_or_stop!(internal, FriendMessage(friendnumber, msg));
+}
+
+extern fn on_friend_action(_: *mut Tox, friendnumber: i32, act: *mut u8, length: u16,
+                           internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let act = parse_string!(act, length);
+    send_or_stop!(internal, FriendAction(friendnumber, act));
+}
+
+extern fn on_name_change(_: *mut Tox, friendnumber: i32, new: *mut u8, length: u16,
+                         internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let new = parse_string!(new, length);
+    send_or_stop!(internal, NameChange(friendnumber, new));
+}
+
+extern fn on_status_message(_: *mut Tox, friendnumber: i32, new: *mut u8, length: u16,
+                            internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let new = parse_string!(new, length);
+    send_or_stop!(internal, StatusMessage(friendnumber, new));
+}
+
+extern fn on_user_status(_: *mut Tox, friendnumber: i32, status: u8,
+                         internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let status = match status as u32 {
+        TOX_USERSTATUS_NONE => UserStatusNone,
+        TOX_USERSTATUS_AWAY => UserStatusAway,
+        TOX_USERSTATUS_BUSY => UserStatusBusy,
+        _ => return,
+    };
+    send_or_stop!(internal, UserStatus(friendnumber, status));
+}
+
+extern fn on_typing_change(_: *mut Tox, friendnumber: i32, is_typing: u8,
+                           internal: *mut c_void) {
+    let internal = get_int!(internal);
+    send_or_stop!(internal, TypingChange(friendnumber, is_typing != 0));
+}
+
+extern fn on_read_receipt(_: *mut Tox, friendnumber: i32, receipt: u32,
+                          internal: *mut c_void) {
+    let internal = get_int!(internal);
+    send_or_stop!(internal, ReadReceipt(friendnumber, receipt));
+}
+
+extern fn on_connection_status(_: *mut Tox, friendnumber: i32, status: u8,
+                               internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let status = match status {
+        1 => Online,
+        _ => Offline,
+    };
+    send_or_stop!(internal, ConnectionStatus(friendnumber, status));
+}
+
+extern fn on_group_invite(_: *mut Tox, friendnumber: i32, group_public_key: *mut u8,
+                          internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let group_public_key = unsafe { ptr::read(group_public_key as *_) };
+    send_or_stop!(internal, GroupInvite(friendnumber, group_public_key));
+}
+
+extern fn on_group_message(_: *mut Tox, groupnumber: i32, frindgroupnumber: i32,
+                           message: *mut u8, len: u16, internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let msg = parse_string!(message, len);
+    send_or_stop!(internal, GroupMessage(groupnumber, frindgroupnumber, msg));
+}
+
+extern fn on_group_action(_: *mut Tox, groupnumber: i32, frindgroupnumber: i32,
+                           action: *mut u8, len: u16, internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let action = parse_string!(action, len);
+    send_or_stop!(internal, GroupMessage(groupnumber, frindgroupnumber, action));
+}
+
+extern fn on_group_namelist_change(_: *mut Tox, groupnumber: i32, peernumber: i32,
+                                   change: u8, internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let change = match change as u32 {
+        TOX_CHAT_CHANGE_PEER_ADD => ChatChangePeerAdd,
+        TOX_CHAT_CHANGE_PEER_DEL => ChatChangePeerDel,
+        TOX_CHAT_CHANGE_PEER_NAME => ChatChangePeerName,
+        _ => return,
+    };
+    send_or_stop!(internal, GroupNamelistChange(groupnumber, peernumber, change));
+}
+
+extern fn on_file_send_request(_: *mut Tox, friendnumber: i32, filenumber: u8,
+                               filesize: u64, filename: *mut u8, len: u16,
+                               internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let slice = to_slice(filename as *u8, len as uint);
+    let path = match Path::new_opt(slice) {
+        Some(p) => match p.filename() {
+            Some(f) => Vec::from_slice(f),
+            None => Vec::from_slice(bytes!("�")),
+        },
+        None => Vec::from_slice(bytes!("�")),
+    };
+    send_or_stop!(internal, FileSendRequest(friendnumber, filenumber, filesize, path));
+}
+
+extern fn on_file_control(_: *mut Tox, friendnumber: i32, receive_send: u8,
+                          filenumber: u8, control_type: u8, data: *mut u8, len: u16,
+                          internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let ty = match control_type as u32 {
+        TOX_FILECONTROL_ACCEPT        => ControlAccept,
+        TOX_FILECONTROL_PAUSE         => ControlPause,
+        TOX_FILECONTROL_KILL          => ControlKill,
+        TOX_FILECONTROL_FINISHED      => ControlFinished,
+        TOX_FILECONTROL_RESUME_BROKEN => ControlResumeBroken,
+        _ => return,
+    };
+    let tt = match receive_send {
+        1 => Sending,
+        0 => Receiving,
+        _ => return,
+    };
+    let data = Vec::from_slice(to_slice(data as *u8, len as uint));
+    send_or_stop!(internal, FileControl(friendnumber, tt, filenumber, ty, data));
+}
+
+extern fn on_file_data(_: *mut Tox, friendnumber: i32, filenumber: u8, data: *mut u8,
+                       len: u16, internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let data = Vec::from_slice(to_slice(data as *u8, len as uint));
+    send_or_stop!(internal, FileData(friendnumber, filenumber, data));
 }
