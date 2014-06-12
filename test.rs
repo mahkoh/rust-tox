@@ -4,7 +4,7 @@ extern crate debug;
 use tox::core::{Tox, NameChange, StatusMessage, FriendMessage};
 
 fn main() {
-    let mut tox = Tox::new(false).unwrap();
+    let tox = Tox::new(false).unwrap();
     let id =
         from_str("951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F").unwrap();
     tox.bootstrap_from_address("192.254.75.98".to_string(), false, 33445, box id).unwrap();
