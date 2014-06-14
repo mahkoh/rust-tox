@@ -129,7 +129,7 @@ impl Backend {
     fn get_client_id(&mut self, friendnumber: i32) -> Result<Box<ClientId>, ()> {
         let mut client: ClientId = unsafe { std::mem::uninitialized() };
         let res = unsafe {
-            tox_get_client_id(self.raw, friendnumber, &mut client.raw as *mut _)
+            tox_get_client_id(self.raw, friendnumber, client.raw.as_mut_ptr())
         };
         match res {
             -1 => Err(()),
@@ -428,7 +428,7 @@ impl Backend {
     fn join_groupchat(&mut self, friendnumber: i32,
                           mut fgpk: Box<ClientId>) -> Result<i32, ()> {
         let res = unsafe {
-            tox_join_groupchat(self.raw, friendnumber, &mut fgpk.raw as *mut _)
+            tox_join_groupchat(self.raw, friendnumber, fgpk.raw.as_mut_ptr())
         };
         match res {
             -1 => Err(()),
@@ -493,6 +493,10 @@ impl Backend {
             }
         }
         Ok(real_names)
+    }
+
+    fn count_chatlist(&mut self) -> u32 {
+        unsafe { tox_count_chatlist(self.raw) }
     }
 
     fn get_chatlist(&mut self) -> Vec<i32> {
@@ -569,7 +573,7 @@ impl Backend {
             address.push_byte(0);
             tox_bootstrap_from_address(self.raw, address.as_bytes().as_ptr() as *_,
                                        ipv6enabled as u8, std::mem::to_be16(port),
-                                       &mut public_key.raw as *mut _)
+                                       public_key.raw.as_mut_ptr())
         };
         match res {
             1 => Ok(()),
@@ -721,6 +725,8 @@ impl Backend {
                 ret.send(self.group_number_peers(group)),
             GroupGetNames(group, ret) =>
                 ret.send(self.group_get_names(group)),
+            CountChatlist(ret) =>
+                ret.send(self.count_chatlist()),
             GetChatlist(ret) =>
                 ret.send(self.get_chatlist()),
             NewFileSender(friend, size, file, ret) =>

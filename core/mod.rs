@@ -355,6 +355,10 @@ impl Tox {
         forward!(backend::CountFriendlist, ->)
     }
 
+    pub fn count_chatlist(&self) -> u32 {
+        forward!(backend::CountChatlist, ->)
+    }
+
     pub fn get_num_online_friends(&self) -> u32 {
         forward!(backend::GetNumOnlineFriends, ->)
     }

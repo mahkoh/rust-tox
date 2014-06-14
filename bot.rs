@@ -13,7 +13,7 @@ static BOOTSTRAP_PORT: u16 = 33445;
 static BOOTSTRAP_KEY: &'static str =
                     "951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F";
 static GROUPCHAT_ADDR: &'static str =
-        "56A1ADE4B65B86BCD51CC73E2CD4E542179F47959FE3E0E21B4B0ACDADE51855D34D34D37CB5";
+        "EFA99A172718C2CCC642AF02BBA5369CB49311EF163D915ED64EA815335FC2748B1A458717E1";
 static BOT_NAME: &'static str = "mahkohBot";
 
 fn main() {
@@ -48,6 +48,9 @@ fn main() {
                                 "europe" => Some("http://i.imgur.com/mQbQbkf.jpg"),
                                 "usa"    => Some("http://i.imgur.com/OEZTpCr.jpg"),
                                 "germany" => Some("http://a.pomf.se/skymwy.jpg"),
+                                "astonex" => Some("astonex pls don't"),
+                                "groupbot" => Some("%ngb"),
+                                "costanza" => Some("http://i.imgur.com/H32aZYe.jpg"),
                                 _ => None,
                             };
                             match msg {
