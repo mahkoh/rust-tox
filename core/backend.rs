@@ -118,7 +118,7 @@ impl Backend {
 
     fn get_friend_number(&mut self, mut client_id: Box<ClientId>) -> Result<i32, ()> {
         let res = unsafe {
-            tox_get_friend_number(self.raw, &mut client_id.raw as *mut _)
+            tox_get_friend_number(self.raw, client_id.raw.as_mut_ptr())
         };
         match res {
             -1 => Err(()),

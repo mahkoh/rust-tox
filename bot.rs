@@ -32,8 +32,10 @@ fn main() {
         for ev in tox.events() {
             match ev {
                 StatusMessage(id, _) if id == groupbot_id => {
-                    tox.send_message(groupbot_id, "invite".to_string()).unwrap();
-                    println!("connected to groupbot");
+                    if tox.count_chatlist() < 1 {
+                        tox.send_message(groupbot_id, "invite".to_string()).unwrap();
+                        println!("connected to groupbot");
+                    }
                 },
                 GroupInvite(id, ref addr) if id == groupbot_id => {
                     tox.join_groupchat(id, addr.clone()).unwrap();
@@ -48,8 +50,11 @@ fn main() {
                                 "europe" => Some("http://i.imgur.com/mQbQbkf.jpg"),
                                 "usa"    => Some("http://i.imgur.com/OEZTpCr.jpg"),
                                 "germany" => Some("http://a.pomf.se/skymwy.jpg"),
+                                "england" => Some("http://i.imgur.com/egKh0ia.jpg"),
+                                "paris" => Some("http://i.imgur.com/vd8bFUT.jpg"),
                                 "astonex" => Some("astonex pls don't"),
                                 "groupbot" => Some("%ngb"),
+                                "america" => Some("http://i.imgur.com/BWi9YJP.jpg"),
                                 "costanza" => Some("http://i.imgur.com/H32aZYe.jpg"),
                                 _ => None,
                             };
