@@ -207,7 +207,7 @@ pub enum TransferType {
 }
 
 pub struct Tox {
-    events: Receiver<Event>,
+    pub events: Receiver<Event>,
     control: SyncSender<backend::Control>,
 }
 
