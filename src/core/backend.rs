@@ -1,6 +1,7 @@
 use std;
 use std::{ptr, task};
 use std::io::{timer};
+use std::num::{Int};
 use std::raw::{Slice};
 use std::mem::{transmute};
 use core::ll::*;
@@ -377,12 +378,11 @@ impl Backend {
     }
 
     fn get_nospam(&mut self) -> [u8, ..4] {
-        unsafe { std::mem::transmute(std::mem::to_be32(tox_get_nospam(self.raw))) }
+        unsafe { std::mem::transmute(tox_get_nospam(self.raw).to_be()) }
     }
 
     fn set_nospam(&mut self, nospam: [u8, ..4]) {
-        unsafe { tox_set_nospam(self.raw,
-                                std::mem::from_be32(std::mem::transmute(nospam))); }
+        unsafe { tox_set_nospam(self.raw, Int::from_be(std::mem::transmute(nospam))); }
     }
 
     fn add_groupchat(&mut self) -> Result<i32, ()> {
@@ -572,7 +572,7 @@ impl Backend {
         let res = unsafe {
             address.push_byte(0);
             tox_bootstrap_from_address(self.raw, address.as_bytes().as_ptr() as *_,
-                                       ipv6enabled as u8, std::mem::to_be16(port),
+                                       ipv6enabled as u8, port.to_be(),
                                        public_key.raw.as_mut_ptr())
         };
         match res {
@@ -920,9 +920,9 @@ extern fn on_file_send_request(_: *mut Tox, friendnumber: i32, filenumber: u8,
     let path = match Path::new_opt(slice) {
         Some(p) => match p.filename() {
             Some(f) => Vec::from_slice(f),
-            None => Vec::from_slice(bytes!("�")),
+            None => Vec::from_slice(b"\xbf\xef"),
         },
-        None => Vec::from_slice(bytes!("�")),
+        None => Vec::from_slice(b"\xbf\xef"),
     };
     send_or_stop!(internal, FileSendRequest(friendnumber, filenumber, filesize, path));
 }

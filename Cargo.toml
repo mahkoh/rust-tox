@@ -1,0 +1,8 @@
+[package]
+name = "tox"
+version = "0.1.0"
+authors = [ ]
+build = "make lib"
+
+# [[lib]]
+# name = "tox"

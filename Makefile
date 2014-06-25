@@ -1,21 +1,31 @@
+
 FLAGS = -O
+DEPS_FILE = target/.tox.deps
+TOX_SRC = src/tox.rs
+TOX = target/$(shell rustc --crate-file-name $(TOX_SRC))
+TOX_DEPS = $(shell head -n1 $(DEPS_FILE) 2> /dev/null)
+EXAMPLES_SRC = $(wildcard src/bin/*.rs)
+EXAMPLES_BIN = $(EXAMPLES_SRC:src/bin/%.rs=target/%)
 
-TOX = $(shell rustc --crate-file-name lib.rs)
+all: $(TOX) $(EXAMPLES_BIN)
 
-all: $(TOX)
+lib: $(TOX)
 
--include .tox.d
+$(TOX): $(TOX_DEPS)
+	@mkdir -p target
+	rustc $(FLAGS) --out-dir target $(TOX_SRC)
+	@rustc --no-trans --dep-info $(DEPS_FILE) $(TOX_SRC)
+	@sed -i 's/.*: //' $(DEPS_FILE)
 
-$(TOX):
-	rustc $(FLAGS) lib.rs
+$(EXAMPLES_BIN): target/%: src/bin/%.rs $(TOX)
+	rustc --out-dir target -L target $<
 
-test: $(TOX) test.rs
-	rustc $(FLAGS) -L. test.rs
-
-version:
-	rustc --no-trans --dep-info .tox.d lib.rs
+docs:
+	rm -rf doc
+	rustdoc $(TOX_SRC)
 
 clean:
-	rm -f $(TOX) test
+	rm -rf doc
+	rm -rf target
 
-.PHONY: version clean
+.PHONY: all clean docs lib
