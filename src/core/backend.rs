@@ -111,7 +111,7 @@ impl Backend {
     }
 
     fn add_friend_norequest(&mut self, client_id: Box<ClientId>) -> Result<i32, ()> {
-        match unsafe { tox_add_friend_norequest(self.raw, &client_id.raw as *_) } {
+        match unsafe { tox_add_friend_norequest(self.raw, client_id.raw.as_ptr()) } {
             -1 => Err(()),
             n => Ok(n),
         }
