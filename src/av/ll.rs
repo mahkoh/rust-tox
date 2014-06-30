@@ -138,15 +138,15 @@ extern "C" {
     pub static av_DefaultSettings: ToxAvCodecSettings;
     pub fn imaxabs(__n: intmax_t) -> intmax_t;
     pub fn imaxdiv(__numer: intmax_t, __denom: intmax_t) -> imaxdiv_t;
-    pub fn strtoimax(__nptr: *::libc::c_char,
+    pub fn strtoimax(__nptr: *const ::libc::c_char,
                      __endptr: *mut *mut ::libc::c_char,
                      __base: ::libc::c_int) -> intmax_t;
-    pub fn strtoumax(__nptr: *::libc::c_char,
+    pub fn strtoumax(__nptr: *const ::libc::c_char,
                      __endptr: *mut *mut ::libc::c_char,
                      __base: ::libc::c_int) -> uintmax_t;
-    pub fn wcstoimax(__nptr: *__gwchar_t, __endptr: *mut *mut __gwchar_t,
+    pub fn wcstoimax(__nptr: *const __gwchar_t, __endptr: *mut *mut __gwchar_t,
                      __base: ::libc::c_int) -> intmax_t;
-    pub fn wcstoumax(__nptr: *__gwchar_t, __endptr: *mut *mut __gwchar_t,
+    pub fn wcstoumax(__nptr: *const __gwchar_t, __endptr: *mut *mut __gwchar_t,
                      __base: ::libc::c_int) -> uintmax_t;
     pub fn vpx_img_alloc(img: *mut vpx_image_t, fmt: vpx_img_fmt_t,
                          d_w: ::libc::c_uint, d_h: ::libc::c_uint,
@@ -172,9 +172,9 @@ extern "C" {
     pub fn toxav_answer(av: *mut ToxAv, call_index: int32_t,
                         call_type: ToxAvCallType) -> ::libc::c_int;
     pub fn toxav_reject(av: *mut ToxAv, call_index: int32_t,
-                        reason: *::libc::c_char) -> ::libc::c_int;
+                        reason: *const ::libc::c_char) -> ::libc::c_int;
     pub fn toxav_cancel(av: *mut ToxAv, call_index: int32_t,
-                        peer_id: ::libc::c_int, reason: *::libc::c_char) ->
+                        peer_id: ::libc::c_int, reason: *const ::libc::c_char) ->
      ::libc::c_int;
     pub fn toxav_stop_call(av: *mut ToxAv, call_index: int32_t) ->
      ::libc::c_int;
@@ -190,10 +190,10 @@ extern "C" {
                             frame_size: ::libc::c_int, dest: *mut int16_t) ->
      ::libc::c_int;
     pub fn toxav_send_video(av: *mut ToxAv, call_index: int32_t,
-                            frame: *uint8_t, frame_size: ::libc::c_int) ->
+                            frame: *const uint8_t, frame_size: ::libc::c_int) ->
      ::libc::c_int;
     pub fn toxav_send_audio(av: *mut ToxAv, call_index: int32_t,
-                            frame: *uint8_t, frame_size: ::libc::c_int) ->
+                            frame: *const uint8_t, frame_size: ::libc::c_int) ->
      ::libc::c_int;
     pub fn toxav_prepare_video_frame(av: *mut ToxAv, call_index: int32_t,
                                      dest: *mut uint8_t,
@@ -202,7 +202,7 @@ extern "C" {
      ::libc::c_int;
     pub fn toxav_prepare_audio_frame(av: *mut ToxAv, call_index: int32_t,
                                      dest: *mut uint8_t,
-                                     dest_max: ::libc::c_int, frame: *int16_t,
+                                     dest_max: ::libc::c_int, frame: *const int16_t,
                                      frame_size: ::libc::c_int) ->
      ::libc::c_int;
     pub fn toxav_get_peer_transmission_type(av: *mut ToxAv,

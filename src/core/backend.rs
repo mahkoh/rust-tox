@@ -571,7 +571,7 @@ impl Backend {
                                   mut public_key: Box<ClientId>) -> Result<(), ()> {
         let res = unsafe {
             address.push_byte(0);
-            tox_bootstrap_from_address(self.raw, address.as_bytes().as_ptr() as *_,
+            tox_bootstrap_from_address(self.raw, address.as_bytes().as_ptr() as *const _,
                                        ipv6enabled as u8, port.to_be(),
                                        public_key.raw.as_mut_ptr())
         };
@@ -796,7 +796,7 @@ macro_rules! send_or_stop {
 macro_rules! parse_string {
     ($p:ident, $l:ident) => {
         {
-            let slice = to_slice($p as *u8, $l as uint);
+            let slice = to_slice($p as *const u8, $l as uint);
             match std::str::from_utf8(slice) {
                 Some(s) => s.to_string(),
                 None => return,
@@ -805,15 +805,15 @@ macro_rules! parse_string {
     }
 }
 
-fn to_slice<T>(p: *T, l: uint) -> &[T] {
+fn to_slice<T>(p: *const T, l: uint) -> &[T] {
     unsafe { transmute(Slice { data: p, len: l }) }
 }
 
-extern fn on_friend_request(_: *mut Tox, public_key: *u8, data: *u8, length: u16,
+extern fn on_friend_request(_: *mut Tox, public_key: *const u8, data: *const u8, length: u16,
                             internal: *mut c_void) {
     let internal = get_int!(internal);
     let msg = parse_string!(data, length);
-    let id = ClientId { raw: unsafe { ptr::read(public_key as *_) } };
+    let id = ClientId { raw: unsafe { ptr::read(public_key as *const _) } };
     send_or_stop!(internal, FriendRequest(box id, msg));
 }
 
@@ -882,7 +882,7 @@ extern fn on_connection_status(_: *mut Tox, friendnumber: i32, status: u8,
 extern fn on_group_invite(_: *mut Tox, friendnumber: i32, group_public_key: *mut u8,
                           internal: *mut c_void) {
     let internal = get_int!(internal);
-    let group = ClientId { raw: unsafe { ptr::read(group_public_key as *_) } };
+    let group = ClientId { raw: unsafe { ptr::read(group_public_key as *const _) } };
     send_or_stop!(internal, GroupInvite(friendnumber, box group));
 }
 
@@ -916,7 +916,7 @@ extern fn on_file_send_request(_: *mut Tox, friendnumber: i32, filenumber: u8,
                                filesize: u64, filename: *mut u8, len: u16,
                                internal: *mut c_void) {
     let internal = get_int!(internal);
-    let slice = to_slice(filename as *u8, len as uint);
+    let slice = to_slice(filename as *const u8, len as uint);
     let path = match Path::new_opt(slice) {
         Some(p) => match p.filename() {
             Some(f) => Vec::from_slice(f),
@@ -944,13 +944,13 @@ extern fn on_file_control(_: *mut Tox, friendnumber: i32, receive_send: u8,
         0 => Receiving,
         _ => return,
     };
-    let data = Vec::from_slice(to_slice(data as *u8, len as uint));
+    let data = Vec::from_slice(to_slice(data as *const u8, len as uint));
     send_or_stop!(internal, FileControl(friendnumber, tt, filenumber, ty, data));
 }
 
 extern fn on_file_data(_: *mut Tox, friendnumber: i32, filenumber: u8, data: *mut u8,
                        len: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
-    let data = Vec::from_slice(to_slice(data as *u8, len as uint));
+    let data = Vec::from_slice(to_slice(data as *const u8, len as uint));
     send_or_stop!(internal, FileData(friendnumber, filenumber, data));
 }

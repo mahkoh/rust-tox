@@ -61,7 +61,7 @@ extern "C" {
     pub fn tox_get_address(tox: *mut Tox, address: *mut uint8_t);
     pub fn tox_add_friend(tox: *mut Tox, address: *mut uint8_t,
                           data: *mut uint8_t, length: uint16_t) -> int32_t;
-    pub fn tox_add_friend_norequest(tox: *mut Tox, client_id: *uint8_t) ->
+    pub fn tox_add_friend_norequest(tox: *mut Tox, client_id: *const uint8_t) ->
      int32_t;
     pub fn tox_get_friend_number(tox: *mut Tox, client_id: *mut uint8_t) ->
      int32_t;
@@ -75,7 +75,7 @@ extern "C" {
     pub fn tox_friend_exists(tox: *mut Tox, friendnumber: int32_t) ->
      ::libc::c_int;
     pub fn tox_send_message(tox: *mut Tox, friendnumber: int32_t,
-                            message: *uint8_t, length: uint32_t) -> uint32_t;
+                            message: *const uint8_t, length: uint32_t) -> uint32_t;
     pub fn tox_send_message_withid(tox: *mut Tox, friendnumber: int32_t,
                                    theid: uint32_t, message: *mut uint8_t,
                                    length: uint32_t) -> uint32_t;
@@ -125,9 +125,9 @@ extern "C" {
                                                                      (arg1:
                                                                           *mut Tox,
                                                                       arg2:
-                                                                          *uint8_t,
+                                                                          *const uint8_t,
                                                                       arg3:
-                                                                          *uint8_t,
+                                                                          *const uint8_t,
                                                                       arg4:
                                                                           uint16_t,
                                                                       arg5:
@@ -392,7 +392,7 @@ extern "C" {
     pub fn tox_file_data_remaining(tox: *mut Tox, friendnumber: int32_t,
                                    filenumber: uint8_t, send_receive: uint8_t)
      -> uint64_t;
-    pub fn tox_bootstrap_from_address(tox: *mut Tox, address: *::libc::c_char,
+    pub fn tox_bootstrap_from_address(tox: *mut Tox, address: *const ::libc::c_char,
                                       ipv6enabled: uint8_t, port: uint16_t,
                                       public_key: *mut uint8_t) ->
      ::libc::c_int;
