@@ -161,7 +161,7 @@ pub enum ConnectionStatus {
     Offline,
 }
 
-#[repr(C)]
+#[repr(u32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum UserStatus {
     UserStatusNone = TOX_USERSTATUS_NONE,
@@ -169,7 +169,7 @@ pub enum UserStatus {
     UserStatusBusy = TOX_USERSTATUS_BUSY,
 }
 
-#[repr(C)]
+#[repr(u32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum ChatChange {
     ChatChangePeerAdd = TOX_CHAT_CHANGE_PEER_ADD,
@@ -177,7 +177,7 @@ pub enum ChatChange {
     ChatChangePeerName = TOX_CHAT_CHANGE_PEER_NAME,
 }
 
-#[repr(C)]
+#[repr(u32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum ControlType {
     ControlAccept = TOX_FILECONTROL_ACCEPT,
@@ -187,7 +187,7 @@ pub enum ControlType {
     ControlResumeBroken = TOX_FILECONTROL_RESUME_BROKEN,
 }
 
-#[repr(C)]
+#[repr(i32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum Faerr {
     FaerrToolong = TOX_FAERR_TOOLONG,
