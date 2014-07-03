@@ -30,6 +30,7 @@ pub enum Event {
     FileData(i32, u8, Vec<u8>),
 }
 
+#[repr(C)]
 pub struct Address {
     id: ClientId,
     nospam: [u8, ..4],
@@ -62,14 +63,14 @@ impl Address {
 
 impl fmt::Show for Address {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let _ = self.id.fmt(fmt);
-        try!(write!(fmt, "{:x}", self.nospam[0]));
-        try!(write!(fmt, "{:x}", self.nospam[1]));
-        try!(write!(fmt, "{:x}", self.nospam[2]));
-        try!(write!(fmt, "{:x}", self.nospam[3]));
+        try!(self.id.fmt(fmt));
+        try!(write!(fmt, "{:02X}", self.nospam[0]));
+        try!(write!(fmt, "{:02X}", self.nospam[1]));
+        try!(write!(fmt, "{:02X}", self.nospam[2]));
+        try!(write!(fmt, "{:02X}", self.nospam[3]));
         let check = self.checksum();
-        try!(write!(fmt, "{:x}", check[0]));
-        try!(write!(fmt, "{:x}", check[1]));
+        try!(write!(fmt, "{:02X}", check[0]));
+        try!(write!(fmt, "{:02X}", check[1]));
         Ok(())
     }
 }
@@ -121,6 +122,7 @@ pub fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
     return Ok(());
 }
 
+#[repr(C)]
 pub struct ClientId {
     pub raw: [u8, ..ID_CLIENT_SIZE],
 }
@@ -134,7 +136,7 @@ impl Clone for ClientId {
 impl fmt::Show for ClientId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for &n in self.raw.iter() {
-            try!(write!(fmt, "{:x}", n));
+            try!(write!(fmt, "{:02X}", n));
         }
         Ok(())
     }

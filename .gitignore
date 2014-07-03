@@ -1,4 +1,6 @@
 .*
 *.rlib
+target
+doc
 !.gitignore
 !.tox.d
