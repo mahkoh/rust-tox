@@ -111,7 +111,7 @@ pub fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
     }
     for i in range(0u, buf.len()) {
         for j in range(0u, 2) {
-            buf[i] = (buf[i] << 4) + match s[2*i + j] as char {
+            buf[i] = (buf[i] << 4) + match s.as_bytes()[2*i + j] as char {
                 c @ '0' .. '9' => (c as u8) - ('0' as u8),
                 c @ 'a' .. 'f' => (c as u8) - ('a' as u8) + 10,
                 c @ 'A' .. 'F' => (c as u8) - ('A' as u8) + 10,
