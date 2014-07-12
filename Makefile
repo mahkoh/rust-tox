@@ -2,7 +2,7 @@
 FLAGS = -O
 DEPS_FILE = target/.tox.deps
 TOX_SRC = src/tox.rs
-TOX = target/$(shell rustc --crate-file-name $(TOX_SRC))
+TOX = target/$(shell rustc --print-file-name $(TOX_SRC))
 TOX_DEPS = $(shell head -n1 $(DEPS_FILE) 2> /dev/null)
 EXAMPLES_SRC = $(wildcard src/bin/*.rs)
 EXAMPLES_BIN = $(EXAMPLES_SRC:src/bin/%.rs=target/%)
