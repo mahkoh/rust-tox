@@ -214,248 +214,248 @@ pub struct Tox {
 }
 
 macro_rules! forward {
-    ($name:expr, ($($pp:ident),+), ->) => {
+    ($slf:expr, $name:expr, ($($pp:ident),+), ->) => {
         {
             let (snd, rcv) = channel();
-            self.control.send($name($($pp),*, snd));
+            $slf.control.send($name($($pp),*, snd));
             rcv.recv()
         }
     };
-    ($name:expr, ->) => {
+    ($slf:expr, $name:expr, ->) => {
         {
             let (snd, rcv) = channel();
-            self.control.send($name(snd));
+            $slf.control.send($name(snd));
             rcv.recv()
         }
     };
-    ($name:expr, ($($pp:ident),+)) => {
+    ($slf:expr, $name:expr, ($($pp:ident),+)) => {
         {
-            self.control.send($name($($pp),*));
+            $slf.control.send($name($($pp),*));
         }
     };
-    ($name:expr) => {
-            self.control.send($name);
+    ($slf:expr, $name:expr) => {
+            $slf.control.send($name);
     };
 
 }
 
 impl Drop for Tox {
     fn drop(&mut self) {
-        forward!(backend::Kill)
+        forward!(self, backend::Kill)
     }
 }
 
 impl Tox {
     pub fn get_address(&self) -> Address {
-        forward!(backend::GetAddress, ->)
+        forward!(self, backend::GetAddress, ->)
     }
 
     pub fn add_friend(&self, address: Box<Address>,
                       msg: String) -> Result<i32, Faerr> {
-        forward!(backend::AddFriend, (address, msg), ->)
+        forward!(self, backend::AddFriend, (address, msg), ->)
     }
 
     pub fn add_friend_norequest(&self, client_id: Box<ClientId>) -> Result<i32, ()> {
-        forward!(backend::AddFriendNorequest, (client_id), ->)
+        forward!(self, backend::AddFriendNorequest, (client_id), ->)
     }
 
     pub fn get_friend_number(&self, client_id: Box<ClientId>) -> Result<i32, ()> {
-        forward!(backend::GetFriendNumber, (client_id), ->)
+        forward!(self, backend::GetFriendNumber, (client_id), ->)
     }
 
     pub fn get_client_id(&self, friendnumber: i32) -> Result<Box<ClientId>, ()> {
-        forward!(backend::GetClientId, (friendnumber), ->)
+        forward!(self, backend::GetClientId, (friendnumber), ->)
     }
 
     pub fn del_friend(&self, friendnumber: i32) -> Result<(),()> {
-        forward!(backend::DelFriend, (friendnumber), ->)
+        forward!(self, backend::DelFriend, (friendnumber), ->)
     }
 
     pub fn get_friend_connection_status(
             &self,
             friendnumber: i32) -> Result<ConnectionStatus, ()> {
-        forward!(backend::GetFriendConnectionStatus, (friendnumber), ->)
+        forward!(self, backend::GetFriendConnectionStatus, (friendnumber), ->)
     }
 
     pub fn friend_exists(&self, friendnumber: i32) -> bool {
-        forward!(backend::FriendExists, (friendnumber), ->)
+        forward!(self, backend::FriendExists, (friendnumber), ->)
     }
 
     pub fn send_message(&self, friendnumber: i32,
                         msg: String) -> Result<u32, ()> {
-        forward!(backend::SendMessage, (friendnumber, msg), ->)
+        forward!(self, backend::SendMessage, (friendnumber, msg), ->)
     }
 
     pub fn send_message_withid(&self, friendnumber: i32, theid: u32,
                                msg: String) -> Result<u32, ()> {
-        forward!(backend::SendMessageWithid, (friendnumber, theid, msg), ->)
+        forward!(self, backend::SendMessageWithid, (friendnumber, theid, msg), ->)
     }
 
     pub fn send_action(&self, friendnumber: i32, action: String) -> Result<u32, ()> {
-        forward!(backend::SendAction, (friendnumber, action), ->)
+        forward!(self, backend::SendAction, (friendnumber, action), ->)
     }
 
     pub fn send_action_withid(&self, friendnumber: i32, theid: u32,
                               action: String) -> Result<u32, ()> {
-        forward!(backend::SendActionWithid, (friendnumber, theid, action), ->)
+        forward!(self, backend::SendActionWithid, (friendnumber, theid, action), ->)
     }
 
     pub fn set_name(&self, name: String) -> Result<(),()> {
-        forward!(backend::SetName, (name), ->)
+        forward!(self, backend::SetName, (name), ->)
     }
 
     pub fn get_self_name(&self) -> Result<String, ()> {
-        forward!(backend::GetSelfName, ->)
+        forward!(self, backend::GetSelfName, ->)
     }
 
     pub fn get_name(&self, friendnumber: i32) -> Result<String, ()> {
-        forward!(backend::GetName, (friendnumber), ->)
+        forward!(self, backend::GetName, (friendnumber), ->)
     }
 
     pub fn set_status_message(&self, status: String) -> Result<(),()> {
-        forward!(backend::SetStatusMessage, (status), ->)
+        forward!(self, backend::SetStatusMessage, (status), ->)
     }
 
     pub fn set_user_status(&self, userstatus: UserStatus) -> Result<(), ()> {
-        forward!(backend::SetUserStatus, (userstatus), ->)
+        forward!(self, backend::SetUserStatus, (userstatus), ->)
     }
 
     pub fn get_status_message(&self, friendnumber: i32) -> Result<String, ()> {
-        forward!(backend::GetStatusMessage, (friendnumber), ->)
+        forward!(self, backend::GetStatusMessage, (friendnumber), ->)
     }
 
     pub fn get_self_status_message(&self) -> Result<String, ()> {
-        forward!(backend::GetSelfStatusMessage, ->)
+        forward!(self, backend::GetSelfStatusMessage, ->)
     }
 
     pub fn get_user_status(&self, friendnumber: i32) -> Result<UserStatus, ()> {
-        forward!(backend::GetUserStatus, (friendnumber), ->)
+        forward!(self, backend::GetUserStatus, (friendnumber), ->)
     }
 
     pub fn get_self_user_status(&self) -> Result<UserStatus, ()> {
-        forward!(backend::GetSelfUserStatus, ->)
+        forward!(self, backend::GetSelfUserStatus, ->)
     }
 
     pub fn get_last_online(&self, friendnumber: i32) -> Result<u64, ()> {
-        forward!(backend::GetLastOnline, (friendnumber), ->)
+        forward!(self, backend::GetLastOnline, (friendnumber), ->)
     }
 
     pub fn set_user_is_typing(&self, friendnumber: i32,
                               is_typing: bool) -> Result<(), ()> {
-        forward!(backend::SetUserIsTyping, (friendnumber, is_typing), ->)
+        forward!(self, backend::SetUserIsTyping, (friendnumber, is_typing), ->)
     }
 
     pub fn get_is_typing(&self, friendnumber: i32) -> bool {
-        forward!(backend::GetIsTyping, (friendnumber), ->)
+        forward!(self, backend::GetIsTyping, (friendnumber), ->)
     }
 
     pub fn set_sends_receipts(&self, friendnumber: i32, yesno: bool) {
-        forward!(backend::SetSendsReceipts, (friendnumber, yesno))
+        forward!(self, backend::SetSendsReceipts, (friendnumber, yesno))
     }
 
     pub fn count_friendlist(&self) -> u32 {
-        forward!(backend::CountFriendlist, ->)
+        forward!(self, backend::CountFriendlist, ->)
     }
 
     pub fn count_chatlist(&self) -> u32 {
-        forward!(backend::CountChatlist, ->)
+        forward!(self, backend::CountChatlist, ->)
     }
 
     pub fn get_num_online_friends(&self) -> u32 {
-        forward!(backend::GetNumOnlineFriends, ->)
+        forward!(self, backend::GetNumOnlineFriends, ->)
     }
 
     pub fn get_friendlist(&self) -> Vec<i32> {
-        forward!(backend::GetFriendlist, ->)
+        forward!(self, backend::GetFriendlist, ->)
     }
 
     pub fn get_nospam(&self) -> [u8, ..4] {
-        forward!(backend::GetNospam, ->)
+        forward!(self, backend::GetNospam, ->)
     }
 
     pub fn set_nospam(&self, nospam: [u8, ..4]) {
-        forward!(backend::SetNospam, (nospam))
+        forward!(self, backend::SetNospam, (nospam))
     }
 
     pub fn add_groupchat(&self) -> Result<i32, ()> {
-        forward!(backend::AddGroupchat, ->)
+        forward!(self, backend::AddGroupchat, ->)
     }
 
     pub fn del_groupchat(&self, groupnumber: i32) -> Result<(),()> {
-        forward!(backend::DelGroupchat, (groupnumber), ->)
+        forward!(self, backend::DelGroupchat, (groupnumber), ->)
     }
 
     pub fn group_peername(&self, groupnumber: i32,
                           peernumber: i32) -> Result<String, ()> {
-        forward!(backend::GroupPeername, (groupnumber, peernumber), ->)
+        forward!(self, backend::GroupPeername, (groupnumber, peernumber), ->)
     }
 
     pub fn invite_friend(&self, friendnumber: i32,
                          groupnumber: i32) -> Result<(), ()> {
-        forward!(backend::InviteFriend, (friendnumber, groupnumber), ->)
+        forward!(self, backend::InviteFriend, (friendnumber, groupnumber), ->)
     }
 
     pub fn join_groupchat(&self, friendnumber: i32,
                           fgpk: Box<ClientId>) -> Result<i32, ()> {
-        forward!(backend::JoinGroupchat, (friendnumber, fgpk), ->)
+        forward!(self, backend::JoinGroupchat, (friendnumber, fgpk), ->)
     }
 
     pub fn group_message_send(&self, groupnumber: i32,
                               message: String) -> Result<(), ()> {
-        forward!(backend::GroupMessageSend, (groupnumber, message), ->)
+        forward!(self, backend::GroupMessageSend, (groupnumber, message), ->)
     }
 
     pub fn group_action_send(&self, groupnumber: i32,
                              action: String) -> Result<(), ()> {
-        forward!(backend::GroupActionSend, (groupnumber, action), ->)
+        forward!(self, backend::GroupActionSend, (groupnumber, action), ->)
     }
 
     pub fn group_number_peers(&self, groupnumber: i32) -> Result<i32, ()> {
-        forward!(backend::GroupNumberPeers, (groupnumber), ->)
+        forward!(self, backend::GroupNumberPeers, (groupnumber), ->)
     }
 
     pub fn group_get_names(&self,
                            groupnumber: i32) -> Result<Vec<Option<String>>, ()> {
-        forward!(backend::GroupGetNames, (groupnumber), ->)
+        forward!(self, backend::GroupGetNames, (groupnumber), ->)
     }
 
     pub fn get_chatlist(&self) -> Vec<i32> {
-        forward!(backend::GetChatlist, ->)
+        forward!(self, backend::GetChatlist, ->)
     }
 
     pub fn new_file_sender(&self, friendnumber: i32, filesize: u64,
                            filename: Path) -> Result<i32, ()> {
-        forward!(backend::NewFileSender, (friendnumber, filesize, filename), ->)
+        forward!(self, backend::NewFileSender, (friendnumber, filesize, filename), ->)
     }
 
     pub fn file_send_control(&self, friendnumber: i32, send_receive: TransferType,
                              filenumber: u8, message_id: u8,
                              data: Vec<u8>) -> Result<(), ()> {
-        forward!(backend::FileSendControl, (friendnumber, send_receive, filenumber,
+        forward!(self, backend::FileSendControl, (friendnumber, send_receive, filenumber,
                                             message_id, data), ->)
     }
 
     pub fn file_send_data(&self, friendnumber: i32, filenumber: u8,
                           data: Vec<u8>) -> Result<(), ()> {
-        forward!(backend::FileSendData, (friendnumber, filenumber, data), ->)
+        forward!(self, backend::FileSendData, (friendnumber, filenumber, data), ->)
     }
 
     pub fn file_data_size(&self, friendnumber: i32) -> Result<i32, ()> {
-        forward!(backend::FileDataSize, (friendnumber), ->)
+        forward!(self, backend::FileDataSize, (friendnumber), ->)
     }
 
     pub fn file_data_remaining(&self, friendnumber: i32, filenumber: u8,
                                send_receive: TransferType) -> Result<u64, ()> {
-        forward!(backend::FileDataRemaining, (friendnumber, filenumber, send_receive), ->)
+        forward!(self, backend::FileDataRemaining, (friendnumber, filenumber, send_receive), ->)
     }
 
     pub fn bootstrap_from_address(&self, address: String, ipv6: bool, port: u16,
                                   public_key: Box<ClientId>) -> Result<(), ()> {
-        forward!(backend::BootstrapFromAddress, (address, ipv6, port, public_key), ->)
+        forward!(self, backend::BootstrapFromAddress, (address, ipv6, port, public_key), ->)
     }
 
     pub fn is_connected(&self) -> bool {
-        forward!(backend::Isconnected, ->)
+        forward!(self, backend::Isconnected, ->)
     }
 
     pub fn new(ipv6enabled: bool) -> Option<Tox> {
@@ -470,11 +470,11 @@ impl Tox {
     }
 
     pub fn save(&self) -> Vec<u8> {
-        forward!(backend::Save, ->)
+        forward!(self, backend::Save, ->)
     }
 
     pub fn load(&self, data: Vec<u8>) -> Result<(), ()> {
-        forward!(backend::Load, (data), ->)
+        forward!(self, backend::Load, (data), ->)
     }
 
     pub fn events<'a>(&'a self) -> EventIter<'a> {

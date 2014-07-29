@@ -805,7 +805,7 @@ macro_rules! parse_string {
     }
 }
 
-fn to_slice<T>(p: *const T, l: uint) -> &[T] {
+fn to_slice<'a, T>(p: *const T, l: uint) -> &'a [T] {
     unsafe { transmute(Slice { data: p, len: l }) }
 }
 
