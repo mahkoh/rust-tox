@@ -56,68 +56,71 @@ pub static TOX_FILECONTROL_PAUSE: ::libc::c_uint = 1;
 pub static TOX_FILECONTROL_KILL: ::libc::c_uint = 2;
 pub static TOX_FILECONTROL_FINISHED: ::libc::c_uint = 3;
 pub static TOX_FILECONTROL_RESUME_BROKEN: ::libc::c_uint = 4;
+#[repr(C)]
+pub struct Tox_Options {
+    pub ipv6enabled: uint8_t,
+    pub udp_disabled: uint8_t,
+    pub proxy_enabled: uint8_t,
+    pub proxy_address: [::libc::c_char, ..256u],
+    pub proxy_port: uint16_t,
+}
+
 #[link(name = "toxcore")]
 extern "C" {
-    pub fn tox_get_address(tox: *mut Tox, address: *mut uint8_t);
-    pub fn tox_add_friend(tox: *mut Tox, address: *mut uint8_t,
-                          data: *mut uint8_t, length: uint16_t) -> int32_t;
-    pub fn tox_add_friend_norequest(tox: *mut Tox, client_id: *const uint8_t) ->
-     int32_t;
-    pub fn tox_get_friend_number(tox: *mut Tox, client_id: *mut uint8_t) ->
-     int32_t;
-    pub fn tox_get_client_id(tox: *mut Tox, friendnumber: int32_t,
+    pub fn tox_get_address(tox: *const Tox, address: *mut uint8_t);
+    pub fn tox_add_friend(tox: *mut Tox, address: *const uint8_t,
+                          data: *const uint8_t, length: uint16_t) -> int32_t;
+    pub fn tox_add_friend_norequest(tox: *mut Tox, client_id: *const uint8_t)
+     -> int32_t;
+    pub fn tox_get_friend_number(tox: *const Tox, client_id: *const uint8_t)
+     -> int32_t;
+    pub fn tox_get_client_id(tox: *const Tox, friendnumber: int32_t,
                              client_id: *mut uint8_t) -> ::libc::c_int;
     pub fn tox_del_friend(tox: *mut Tox, friendnumber: int32_t) ->
      ::libc::c_int;
-    pub fn tox_get_friend_connection_status(tox: *mut Tox,
+    pub fn tox_get_friend_connection_status(tox: *const Tox,
                                             friendnumber: int32_t) ->
      ::libc::c_int;
-    pub fn tox_friend_exists(tox: *mut Tox, friendnumber: int32_t) ->
+    pub fn tox_friend_exists(tox: *const Tox, friendnumber: int32_t) ->
      ::libc::c_int;
     pub fn tox_send_message(tox: *mut Tox, friendnumber: int32_t,
-                            message: *const uint8_t, length: uint32_t) -> uint32_t;
-    pub fn tox_send_message_withid(tox: *mut Tox, friendnumber: int32_t,
-                                   theid: uint32_t, message: *mut uint8_t,
-                                   length: uint32_t) -> uint32_t;
-    pub fn tox_send_action(tox: *mut Tox, friendnumber: int32_t,
-                           action: *mut uint8_t, length: uint32_t) ->
+                            message: *const uint8_t, length: uint32_t) ->
      uint32_t;
-    pub fn tox_send_action_withid(tox: *mut Tox, friendnumber: int32_t,
-                                  theid: uint32_t, action: *mut uint8_t,
-                                  length: uint32_t) -> uint32_t;
-    pub fn tox_set_name(tox: *mut Tox, name: *mut uint8_t, length: uint16_t)
+    pub fn tox_send_action(tox: *mut Tox, friendnumber: int32_t,
+                           action: *const uint8_t, length: uint32_t) ->
+     uint32_t;
+    pub fn tox_set_name(tox: *mut Tox, name: *const uint8_t, length: uint16_t)
      -> ::libc::c_int;
-    pub fn tox_get_self_name(tox: *mut Tox, name: *mut uint8_t) -> uint16_t;
-    pub fn tox_get_name(tox: *mut Tox, friendnumber: int32_t,
+    pub fn tox_get_self_name(tox: *const Tox, name: *mut uint8_t) -> uint16_t;
+    pub fn tox_get_name(tox: *const Tox, friendnumber: int32_t,
                         name: *mut uint8_t) -> ::libc::c_int;
-    pub fn tox_get_name_size(tox: *mut Tox, friendnumber: int32_t) ->
+    pub fn tox_get_name_size(tox: *const Tox, friendnumber: int32_t) ->
      ::libc::c_int;
-    pub fn tox_get_self_name_size(tox: *mut Tox) -> ::libc::c_int;
-    pub fn tox_set_status_message(tox: *mut Tox, status: *mut uint8_t,
+    pub fn tox_get_self_name_size(tox: *const Tox) -> ::libc::c_int;
+    pub fn tox_set_status_message(tox: *mut Tox, status: *const uint8_t,
                                   length: uint16_t) -> ::libc::c_int;
     pub fn tox_set_user_status(tox: *mut Tox, userstatus: uint8_t) ->
      ::libc::c_int;
-    pub fn tox_get_status_message_size(tox: *mut Tox, friendnumber: int32_t)
+    pub fn tox_get_status_message_size(tox: *const Tox, friendnumber: int32_t)
      -> ::libc::c_int;
-    pub fn tox_get_self_status_message_size(tox: *mut Tox) -> ::libc::c_int;
-    pub fn tox_get_status_message(tox: *mut Tox, friendnumber: int32_t,
+    pub fn tox_get_self_status_message_size(tox: *const Tox) -> ::libc::c_int;
+    pub fn tox_get_status_message(tox: *const Tox, friendnumber: int32_t,
                                   buf: *mut uint8_t, maxlen: uint32_t) ->
      ::libc::c_int;
-    pub fn tox_get_self_status_message(tox: *mut Tox, buf: *mut uint8_t,
+    pub fn tox_get_self_status_message(tox: *const Tox, buf: *mut uint8_t,
                                        maxlen: uint32_t) -> ::libc::c_int;
-    pub fn tox_get_user_status(tox: *mut Tox, friendnumber: int32_t) ->
+    pub fn tox_get_user_status(tox: *const Tox, friendnumber: int32_t) ->
      uint8_t;
-    pub fn tox_get_self_user_status(tox: *mut Tox) -> uint8_t;
-    pub fn tox_get_last_online(tox: *mut Tox, friendnumber: int32_t) ->
+    pub fn tox_get_self_user_status(tox: *const Tox) -> uint8_t;
+    pub fn tox_get_last_online(tox: *const Tox, friendnumber: int32_t) ->
      uint64_t;
     pub fn tox_set_user_is_typing(tox: *mut Tox, friendnumber: int32_t,
                                   is_typing: uint8_t) -> ::libc::c_int;
-    pub fn tox_get_is_typing(tox: *mut Tox, friendnumber: int32_t) -> uint8_t;
-    pub fn tox_set_sends_receipts(tox: *mut Tox, friendnumber: int32_t,
-                                  yesno: ::libc::c_int);
-    pub fn tox_count_friendlist(tox: *mut Tox) -> uint32_t;
-    pub fn tox_get_num_online_friends(tox: *mut Tox) -> uint32_t;
-    pub fn tox_get_friendlist(tox: *mut Tox, out_list: *mut int32_t,
+    pub fn tox_get_is_typing(tox: *const Tox, friendnumber: int32_t) ->
+     uint8_t;
+    pub fn tox_count_friendlist(tox: *const Tox) -> uint32_t;
+    pub fn tox_get_num_online_friends(tox: *const Tox) -> uint32_t;
+    pub fn tox_get_friendlist(tox: *const Tox, out_list: *mut int32_t,
                               list_size: uint32_t) -> uint32_t;
     pub fn tox_callback_friend_request(tox: *mut Tox,
                                        function:
@@ -141,7 +144,7 @@ extern "C" {
                                                                       arg2:
                                                                           int32_t,
                                                                       arg3:
-                                                                          *mut uint8_t,
+                                                                          *const uint8_t,
                                                                       arg4:
                                                                           uint16_t,
                                                                       arg5:
@@ -155,7 +158,7 @@ extern "C" {
                                                                      arg2:
                                                                          int32_t,
                                                                      arg3:
-                                                                         *mut uint8_t,
+                                                                         *const uint8_t,
                                                                      arg4:
                                                                          uint16_t,
                                                                      arg5:
@@ -169,7 +172,7 @@ extern "C" {
                                                                    arg2:
                                                                        int32_t,
                                                                    arg3:
-                                                                       *mut uint8_t,
+                                                                       *const uint8_t,
                                                                    arg4:
                                                                        uint16_t,
                                                                    arg5:
@@ -183,7 +186,7 @@ extern "C" {
                                                                       arg2:
                                                                           int32_t,
                                                                       arg3:
-                                                                          *mut uint8_t,
+                                                                          *const uint8_t,
                                                                       arg4:
                                                                           uint16_t,
                                                                       arg5:
@@ -237,8 +240,46 @@ extern "C" {
                                                                          arg4:
                                                                              *mut ::libc::c_void)>,
                                           userdata: *mut ::libc::c_void);
-    pub fn tox_get_nospam(tox: *mut Tox) -> uint32_t;
+    pub fn tox_get_nospam(tox: *const Tox) -> uint32_t;
     pub fn tox_set_nospam(tox: *mut Tox, nospam: uint32_t);
+    pub fn tox_get_keys(tox: *mut Tox, public_key: *mut uint8_t,
+                        secret_key: *mut uint8_t);
+    pub fn tox_lossy_packet_registerhandler(tox: *mut Tox,
+                                            friendnumber: int32_t,
+                                            byte: uint8_t,
+                                            packet_handler_callback:
+                                                ::std::option::Option<extern "C" fn
+                                                                          (arg1:
+                                                                               *mut ::libc::c_void,
+                                                                           arg2:
+                                                                               *const uint8_t,
+                                                                           arg3:
+                                                                               uint32_t)
+                                                                          ->
+                                                                              ::libc::c_int>,
+                                            object: *mut ::libc::c_void) ->
+     ::libc::c_int;
+    pub fn tox_send_lossy_packet(tox: *const Tox, friendnumber: int32_t,
+                                 data: *const uint8_t, length: uint32_t) ->
+     ::libc::c_int;
+    pub fn tox_lossless_packet_registerhandler(tox: *mut Tox,
+                                               friendnumber: int32_t,
+                                               byte: uint8_t,
+                                               packet_handler_callback:
+                                                   ::std::option::Option<extern "C" fn
+                                                                             (arg1:
+                                                                                  *mut ::libc::c_void,
+                                                                              arg2:
+                                                                                  *const uint8_t,
+                                                                              arg3:
+                                                                                  uint32_t)
+                                                                             ->
+                                                                                 ::libc::c_int>,
+                                               object: *mut ::libc::c_void) ->
+     ::libc::c_int;
+    pub fn tox_send_lossless_packet(tox: *const Tox, friendnumber: int32_t,
+                                    data: *const uint8_t, length: uint32_t) ->
+     ::libc::c_int;
     pub fn tox_callback_group_invite(tox: *mut Tox,
                                      function:
                                          ::std::option::Option<extern "C" fn
@@ -247,7 +288,7 @@ extern "C" {
                                                                     arg2:
                                                                         int32_t,
                                                                     arg3:
-                                                                        *mut uint8_t,
+                                                                        *const uint8_t,
                                                                     arg4:
                                                                         *mut ::libc::c_void)>,
                                      userdata: *mut ::libc::c_void);
@@ -261,7 +302,7 @@ extern "C" {
                                                                      arg3:
                                                                          ::libc::c_int,
                                                                      arg4:
-                                                                         *mut uint8_t,
+                                                                         *const uint8_t,
                                                                      arg5:
                                                                          uint16_t,
                                                                      arg6:
@@ -277,7 +318,7 @@ extern "C" {
                                                                     arg3:
                                                                         ::libc::c_int,
                                                                     arg4:
-                                                                        *mut uint8_t,
+                                                                        *const uint8_t,
                                                                     arg5:
                                                                         uint16_t,
                                                                     arg6:
@@ -300,28 +341,27 @@ extern "C" {
     pub fn tox_add_groupchat(tox: *mut Tox) -> ::libc::c_int;
     pub fn tox_del_groupchat(tox: *mut Tox, groupnumber: ::libc::c_int) ->
      ::libc::c_int;
-    pub fn tox_group_peername(tox: *mut Tox, groupnumber: ::libc::c_int,
+    pub fn tox_group_peername(tox: *const Tox, groupnumber: ::libc::c_int,
                               peernumber: ::libc::c_int, name: *mut uint8_t)
      -> ::libc::c_int;
     pub fn tox_invite_friend(tox: *mut Tox, friendnumber: int32_t,
                              groupnumber: ::libc::c_int) -> ::libc::c_int;
     pub fn tox_join_groupchat(tox: *mut Tox, friendnumber: int32_t,
-                              friend_group_public_key: *mut uint8_t) ->
+                              friend_group_public_key: *const uint8_t) ->
      ::libc::c_int;
     pub fn tox_group_message_send(tox: *mut Tox, groupnumber: ::libc::c_int,
-                                  message: *mut uint8_t, length: uint32_t) ->
-     ::libc::c_int;
-    pub fn tox_group_action_send(tox: *mut Tox, groupnumber: ::libc::c_int,
-                                 action: *mut uint8_t, length: uint32_t) ->
-     ::libc::c_int;
-    pub fn tox_group_number_peers(tox: *mut Tox, groupnumber: ::libc::c_int)
+                                  message: *const uint8_t, length: uint32_t)
      -> ::libc::c_int;
-    pub fn tox_group_get_names(tox: *mut Tox, groupnumber: ::libc::c_int,
-                               names: *mut [uint8_t, ..128u],
-                               lengths: *mut uint16_t, length: uint16_t) ->
+    pub fn tox_group_action_send(tox: *mut Tox, groupnumber: ::libc::c_int,
+                                 action: *const uint8_t, length: uint32_t) ->
      ::libc::c_int;
-    pub fn tox_count_chatlist(tox: *mut Tox) -> uint32_t;
-    pub fn tox_get_chatlist(tox: *mut Tox, out_list: *mut ::libc::c_int,
+    pub fn tox_group_number_peers(tox: *const Tox, groupnumber: ::libc::c_int)
+     -> ::libc::c_int;
+    pub fn tox_group_get_names(tox: *const Tox, groupnumber: ::libc::c_int,
+                               names: *mut [uint8_t, ..128u], lengths: *mut uint16_t,
+                               length: uint16_t) -> ::libc::c_int;
+    pub fn tox_count_chatlist(tox: *const Tox) -> uint32_t;
+    pub fn tox_get_chatlist(tox: *const Tox, out_list: *mut ::libc::c_int,
                             list_size: uint32_t) -> uint32_t;
     pub fn tox_callback_file_send_request(tox: *mut Tox,
                                           function:
@@ -335,7 +375,7 @@ extern "C" {
                                                                          arg4:
                                                                              uint64_t,
                                                                          arg5:
-                                                                             *mut uint8_t,
+                                                                             *const uint8_t,
                                                                          arg6:
                                                                              uint16_t,
                                                                          arg7:
@@ -355,7 +395,7 @@ extern "C" {
                                                                     arg5:
                                                                         uint8_t,
                                                                     arg6:
-                                                                        *mut uint8_t,
+                                                                        *const uint8_t,
                                                                     arg7:
                                                                         uint16_t,
                                                                     arg8:
@@ -371,38 +411,42 @@ extern "C" {
                                                                  arg3:
                                                                      uint8_t,
                                                                  arg4:
-                                                                     *mut uint8_t,
+                                                                     *const uint8_t,
                                                                  arg5:
                                                                      uint16_t,
                                                                  arg6:
                                                                      *mut ::libc::c_void)>,
                                   userdata: *mut ::libc::c_void);
     pub fn tox_new_file_sender(tox: *mut Tox, friendnumber: int32_t,
-                               filesize: uint64_t, filename: *mut uint8_t,
+                               filesize: uint64_t, filename: *const uint8_t,
                                filename_length: uint16_t) -> ::libc::c_int;
     pub fn tox_file_send_control(tox: *mut Tox, friendnumber: int32_t,
                                  send_receive: uint8_t, filenumber: uint8_t,
-                                 message_id: uint8_t, data: *mut uint8_t,
+                                 message_id: uint8_t, data: *const uint8_t,
                                  length: uint16_t) -> ::libc::c_int;
     pub fn tox_file_send_data(tox: *mut Tox, friendnumber: int32_t,
-                              filenumber: uint8_t, data: *mut uint8_t,
+                              filenumber: uint8_t, data: *const uint8_t,
                               length: uint16_t) -> ::libc::c_int;
-    pub fn tox_file_data_size(tox: *mut Tox, friendnumber: int32_t) ->
+    pub fn tox_file_data_size(tox: *const Tox, friendnumber: int32_t) ->
      ::libc::c_int;
-    pub fn tox_file_data_remaining(tox: *mut Tox, friendnumber: int32_t,
+    pub fn tox_file_data_remaining(tox: *const Tox, friendnumber: int32_t,
                                    filenumber: uint8_t, send_receive: uint8_t)
      -> uint64_t;
-    pub fn tox_bootstrap_from_address(tox: *mut Tox, address: *const ::libc::c_char,
-                                      ipv6enabled: uint8_t, port: uint16_t,
-                                      public_key: *mut uint8_t) ->
+    pub fn tox_bootstrap_from_address(tox: *mut Tox,
+                                      address: *const ::libc::c_char,
+                                      port: uint16_t,
+                                      public_key: *const uint8_t) ->
      ::libc::c_int;
-    pub fn tox_isconnected(tox: *mut Tox) -> ::libc::c_int;
-    pub fn tox_new(ipv6enabled: uint8_t) -> *mut Tox;
+    pub fn tox_add_tcp_relay(tox: *mut Tox, address: *const ::libc::c_char,
+                             port: uint16_t, public_key: *const uint8_t) ->
+     ::libc::c_int;
+    pub fn tox_isconnected(tox: *const Tox) -> ::libc::c_int;
+    pub fn tox_new(options: *mut Tox_Options) -> *mut Tox;
     pub fn tox_kill(tox: *mut Tox);
     pub fn tox_do_interval(tox: *mut Tox) -> uint32_t;
     pub fn tox_do(tox: *mut Tox);
-    pub fn tox_size(tox: *mut Tox) -> uint32_t;
-    pub fn tox_save(tox: *mut Tox, data: *mut uint8_t);
-    pub fn tox_load(tox: *mut Tox, data: *mut uint8_t, length: uint32_t) ->
+    pub fn tox_size(tox: *const Tox) -> uint32_t;
+    pub fn tox_save(tox: *const Tox, data: *mut uint8_t);
+    pub fn tox_load(tox: *mut Tox, data: *const uint8_t, length: uint32_t) ->
      ::libc::c_int;
 }

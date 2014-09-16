@@ -86,15 +86,15 @@ impl Drop for Backend {
 impl Backend {
     fn get_address(&mut self) -> Address {
         let mut adr: Address = unsafe { std::mem::uninitialized() };
-        unsafe { tox_get_address(self.raw, &mut adr as *mut _ as *mut _); }
+        unsafe { tox_get_address(&*self.raw, &mut adr as *mut _ as *mut _); }
         adr
     }
 
     fn add_friend(&mut self, mut address: Box<Address>,
                   mut msg: String) -> Result<i32, Faerr> {
         let res = unsafe {
-            tox_add_friend(self.raw, &mut *address as *mut _ as *mut _,
-                           msg.as_mut_bytes().as_mut_ptr(), msg.len() as u16)
+            tox_add_friend(self.raw, &*address as *const _ as *const _,
+                           msg.as_bytes().as_ptr(), msg.len() as u16)
         };
         match res {
             TOX_FAERR_TOOLONG => Err(FaerrToolong),
@@ -119,7 +119,7 @@ impl Backend {
 
     fn get_friend_number(&mut self, mut client_id: Box<ClientId>) -> Result<i32, ()> {
         let res = unsafe {
-            tox_get_friend_number(self.raw, client_id.raw.as_mut_ptr())
+            tox_get_friend_number(&*self.raw, client_id.raw.as_ptr())
         };
         match res {
             -1 => Err(()),
@@ -130,7 +130,7 @@ impl Backend {
     fn get_client_id(&mut self, friendnumber: i32) -> Result<Box<ClientId>, ()> {
         let mut client: ClientId = unsafe { std::mem::uninitialized() };
         let res = unsafe {
-            tox_get_client_id(self.raw, friendnumber, client.raw.as_mut_ptr())
+            tox_get_client_id(&*self.raw, friendnumber, client.raw.as_mut_ptr())
         };
         match res {
             -1 => Err(()),
@@ -148,7 +148,7 @@ impl Backend {
     fn get_friend_connection_status(
             &mut self,
             friendnumber: i32) -> Result<ConnectionStatus, ()> {
-        match unsafe { tox_get_friend_connection_status(self.raw, friendnumber) } {
+        match unsafe { tox_get_friend_connection_status(&*self.raw, friendnumber) } {
             1 => Ok(Online),
             0 => Ok(Offline),
             _ => Err(()),
@@ -156,7 +156,7 @@ impl Backend {
     }
 
     fn friend_exists(&mut self, friendnumber: i32) -> bool {
-        match unsafe { tox_friend_exists(self.raw, friendnumber) } {
+        match unsafe { tox_friend_exists(&*self.raw, friendnumber) } {
             1 => true,
             _ => false,
         }
@@ -188,7 +188,7 @@ impl Backend {
     fn send_action(&mut self, friendnumber: i32, mut action: String) -> Result<u32, ()> {
         let res = unsafe {
             tox_send_action(self.raw, friendnumber,
-                            action.as_mut_vec().as_mut_ptr(), action.len() as u32)
+                            action.as_mut_vec().as_ptr(), action.len() as u32)
         };
         match res {
             0 => Err(()),
@@ -210,7 +210,7 @@ impl Backend {
 
     fn set_name(&mut self, mut name: String) -> Result<(),()> {
         let res = unsafe {
-            tox_set_name(self.raw, name.as_mut_vec().as_mut_ptr(), name.len() as u16)
+            tox_set_name(self.raw, name.as_mut_vec().as_ptr(), name.len() as u16)
         };
         match res {
             0 => Ok(()),
@@ -221,7 +221,7 @@ impl Backend {
     fn get_self_name(&mut self) -> Result<String, ()> {
         let mut name = Vec::with_capacity(MAX_NAME_LENGTH);
         let res = unsafe {
-            let len = tox_get_self_name(self.raw, name.as_mut_ptr());
+            let len = tox_get_self_name(&*self.raw, name.as_mut_ptr());
             name.set_len(len as uint);
             len
         };
@@ -237,7 +237,7 @@ impl Backend {
     fn get_name(&mut self, friendnumber: i32) -> Result<String, ()> {
         let mut name = Vec::with_capacity(MAX_NAME_LENGTH);
         let res = unsafe {
-            let len = tox_get_name(self.raw, friendnumber, name.as_mut_ptr());
+            let len = tox_get_name(&*self.raw, friendnumber, name.as_mut_ptr());
             // len might be -1 but it doesn't matter if we don't return name.
             name.set_len(len as uint);
             len
@@ -253,7 +253,7 @@ impl Backend {
 
     fn set_status_message(&mut self, mut status: String) -> Result<(),()> {
         let res = unsafe {
-            tox_set_status_message(self.raw, status.as_mut_vec().as_mut_ptr(),
+            tox_set_status_message(self.raw, status.as_mut_vec().as_ptr(),
                                    status.len() as u16)
         };
         match res {
@@ -270,14 +270,14 @@ impl Backend {
     }
 
     fn get_status_message(&mut self, friendnumber: i32) -> Result<String, ()> {
-        let size = unsafe { tox_get_status_message_size(self.raw, friendnumber) };
+        let size = unsafe { tox_get_status_message_size(&*self.raw, friendnumber) };
         let size = match size {
             -1 => return Err(()),
             _ => size,
         };
         let mut status = Vec::with_capacity(size as uint);
         let size = unsafe {
-            let len = tox_get_status_message(self.raw, friendnumber, status.as_mut_ptr(),
+            let len = tox_get_status_message(&*self.raw, friendnumber, status.as_mut_ptr(),
                                              size as u32);
             status.set_len(len as uint);
             len
@@ -292,14 +292,14 @@ impl Backend {
     }
 
     fn get_self_status_message(&mut self) -> Result<String, ()> {
-        let size = unsafe { tox_get_self_status_message_size(self.raw) };
+        let size = unsafe { tox_get_self_status_message_size(&*self.raw) };
         let size = match size {
             -1 => return Err(()),
             _ => size as u32,
         };
         let mut status = Vec::with_capacity(size as uint);
         let size = unsafe {
-            let len = tox_get_self_status_message(self.raw, status.as_mut_ptr(), size);
+            let len = tox_get_self_status_message(&*self.raw, status.as_mut_ptr(), size);
             status.set_len(len as uint);
             len
         };
@@ -313,7 +313,7 @@ impl Backend {
     }
 
     fn get_user_status(&mut self, friendnumber: i32) -> Result<UserStatus, ()> {
-        match unsafe { tox_get_user_status(self.raw, friendnumber) as u32 } {
+        match unsafe { tox_get_user_status(&*self.raw, friendnumber) as u32 } {
             TOX_USERSTATUS_AWAY => Ok(UserStatusAway),
             TOX_USERSTATUS_NONE => Ok(UserStatusNone),
             TOX_USERSTATUS_BUSY => Ok(UserStatusBusy),
@@ -322,7 +322,7 @@ impl Backend {
     }
 
     fn get_self_user_status(&mut self) -> Result<UserStatus, ()> {
-        match unsafe { tox_get_self_user_status(self.raw) as u32 } {
+        match unsafe { tox_get_self_user_status(&*self.raw) as u32 } {
             TOX_USERSTATUS_AWAY => Ok(UserStatusAway),
             TOX_USERSTATUS_NONE => Ok(UserStatusNone),
             TOX_USERSTATUS_BUSY => Ok(UserStatusBusy),
@@ -331,7 +331,7 @@ impl Backend {
     }
 
     fn get_last_online(&mut self, friendnumber: i32) -> Result<u64, ()> {
-        match unsafe { tox_get_last_online(self.raw, friendnumber) } {
+        match unsafe { tox_get_last_online(&*self.raw, friendnumber) } {
             -1 => Err(()),
             n => Ok(n),
         }
@@ -349,7 +349,7 @@ impl Backend {
     }
 
     fn get_is_typing(&mut self, friendnumber: i32) -> bool {
-        match unsafe { tox_get_is_typing(self.raw, friendnumber) } {
+        match unsafe { tox_get_is_typing(&*self.raw, friendnumber) } {
             0 => false,
             _ => true,
         }
@@ -360,25 +360,25 @@ impl Backend {
 //    }
 
     fn count_friendlist(&mut self) -> u32 {
-        unsafe { tox_count_friendlist(self.raw) }
+        unsafe { tox_count_friendlist(&*self.raw) }
     }
 
     fn get_num_online_friends(&mut self) -> u32 {
-        unsafe { tox_get_num_online_friends(self.raw) }
+        unsafe { tox_get_num_online_friends(&*self.raw) }
     }
 
     fn get_friendlist(&mut self) -> Vec<i32> {
         let size = self.count_friendlist();
         let mut vec = Vec::with_capacity(size as uint);
         unsafe {
-            let len = tox_get_friendlist(self.raw, vec.as_mut_ptr(), size);
+            let len = tox_get_friendlist(&*self.raw, vec.as_mut_ptr(), size);
             vec.set_len(len as uint);
         }
         vec
     }
 
     fn get_nospam(&mut self) -> [u8, ..4] {
-        unsafe { std::mem::transmute(tox_get_nospam(self.raw).to_be()) }
+        unsafe { std::mem::transmute(tox_get_nospam(&*self.raw).to_be()) }
     }
 
     fn set_nospam(&mut self, nospam: [u8, ..4]) {
@@ -403,7 +403,7 @@ impl Backend {
                           peernumber: i32) -> Result<String, ()> {
         let mut vec = Vec::with_capacity(MAX_NAME_LENGTH);
         let len = unsafe {
-            let len = tox_group_peername(self.raw, groupnumber, peernumber,
+            let len = tox_group_peername(&*self.raw, groupnumber, peernumber,
                                          vec.as_mut_ptr());
             vec.set_len(len as uint);
             len
@@ -428,7 +428,7 @@ impl Backend {
     fn join_groupchat(&mut self, friendnumber: i32,
                           mut fgpk: Box<ClientId>) -> Result<i32, ()> {
         let res = unsafe {
-            tox_join_groupchat(self.raw, friendnumber, fgpk.raw.as_mut_ptr())
+            tox_join_groupchat(self.raw, friendnumber, fgpk.raw.as_ptr())
         };
         match res {
             -1 => Err(()),
@@ -439,7 +439,7 @@ impl Backend {
     fn group_message_send(&mut self, groupnumber: i32,
                               mut msg: String) -> Result<(), ()> {
         let res = unsafe {
-            tox_group_message_send(self.raw, groupnumber, msg.as_mut_vec().as_mut_ptr(),
+            tox_group_message_send(self.raw, groupnumber, msg.as_mut_vec().as_ptr(),
                                    msg.len() as u32)
         };
         match res {
@@ -451,7 +451,7 @@ impl Backend {
     fn group_action_send(&mut self, groupnumber: i32,
                              mut act: String) -> Result<(), ()> {
         let res = unsafe {
-            tox_group_action_send(self.raw, groupnumber, act.as_mut_vec().as_mut_ptr(),
+            tox_group_action_send(self.raw, groupnumber, act.as_mut_vec().as_ptr(),
                                   act.len() as u32)
         };
         match res {
@@ -461,7 +461,7 @@ impl Backend {
     }
 
     fn group_number_peers(&mut self, groupnumber: i32) -> Result<i32, ()> {
-        match unsafe { tox_group_number_peers(self.raw, groupnumber) } {
+        match unsafe { tox_group_number_peers(&*self.raw, groupnumber) } {
             -1 => Err(()),
             n => Ok(n),
         }
@@ -476,7 +476,7 @@ impl Backend {
         let mut names = Vec::with_capacity(num);
         let mut lengths = Vec::with_capacity(num);
         let len = unsafe {
-            let len = tox_group_get_names(self.raw, groupnumber, names.as_mut_ptr(),
+            let len = tox_group_get_names(&*self.raw, groupnumber, names.as_mut_ptr(),
                                           lengths.as_mut_ptr(), num as u16);
             names.set_len(len as uint);
             lengths.set_len(len as uint);
@@ -496,14 +496,14 @@ impl Backend {
     }
 
     fn count_chatlist(&mut self) -> u32 {
-        unsafe { tox_count_chatlist(self.raw) }
+        unsafe { tox_count_chatlist(&*self.raw) }
     }
 
     fn get_chatlist(&mut self) -> Vec<i32> {
-        let num = unsafe { tox_count_chatlist(self.raw) };
+        let num = unsafe { tox_count_chatlist(&*self.raw) };
         let mut vec = Vec::with_capacity(num as uint);
         unsafe {
-            let num = tox_get_chatlist(self.raw, vec.as_mut_ptr(), num);
+            let num = tox_get_chatlist(&*self.raw, vec.as_mut_ptr(), num);
             vec.set_len(num as uint);
         }
         vec
@@ -514,7 +514,7 @@ impl Backend {
         let mut filename = filename.into_vec();
         let res = unsafe {
             tox_new_file_sender(self.raw, friendnumber, filesize,
-                                filename.as_mut_ptr(), filename.len() as u16)
+                                filename.as_ptr(), filename.len() as u16)
         };
         match res {
             -1 => Err(()),
@@ -527,7 +527,7 @@ impl Backend {
                              mut data: Vec<u8>) -> Result<(), ()> {
         let res = unsafe {
             tox_file_send_control(self.raw, friendnumber, send_receive as u8, filenumber,
-                                  message_id, data.as_mut_ptr(), data.len() as u16)
+                                  message_id, data.as_ptr(), data.len() as u16)
         };
         match res {
             0 => Ok(()),
@@ -538,7 +538,7 @@ impl Backend {
     fn file_send_data(&mut self, friendnumber: i32, filenumber: u8,
                           mut data: Vec<u8>) -> Result<(), ()> {
         let res = unsafe {
-            tox_file_send_data(self.raw, friendnumber, filenumber, data.as_mut_ptr(),
+            tox_file_send_data(self.raw, friendnumber, filenumber, data.as_ptr(),
                                data.len() as u16)
         };
         match res {
@@ -548,7 +548,7 @@ impl Backend {
     }
 
     fn file_data_size(&mut self, friendnumber: i32) -> Result<i32, ()> {
-        match unsafe { tox_file_data_size(self.raw, friendnumber) } {
+        match unsafe { tox_file_data_size(&*self.raw, friendnumber) } {
             -1 => Err(()),
             n => Ok(n),
         }
@@ -557,7 +557,7 @@ impl Backend {
     fn file_data_remaining(&mut self, friendnumber: i32, filenumber: u8,
                                send_receive: TransferType) -> Result<u64, ()> {
         let res = unsafe {
-            tox_file_data_remaining(self.raw, friendnumber, filenumber,
+            tox_file_data_remaining(&*self.raw, friendnumber, filenumber,
                                     send_receive as u8)
         };
         match res {
@@ -566,14 +566,12 @@ impl Backend {
         }
     }
 
-    fn bootstrap_from_address(&mut self, mut address: String, ipv6enabled: bool,
-                                  port: u16,
+    fn bootstrap_from_address(&mut self, mut address: String, port: u16,
                                   mut public_key: Box<ClientId>) -> Result<(), ()> {
         let res = unsafe {
             address.push_byte(0);
             tox_bootstrap_from_address(self.raw, address.as_bytes().as_ptr() as *const _,
-                                       ipv6enabled as u8, port.to_be(),
-                                       public_key.raw.as_mut_ptr())
+                                       port.to_be(), public_key.raw.as_ptr())
         };
         match res {
             1 => Ok(()),
@@ -582,14 +580,14 @@ impl Backend {
     }
 
     fn is_connected(&mut self) -> bool {
-        match unsafe { tox_isconnected(self.raw) } {
+        match unsafe { tox_isconnected(&*self.raw) } {
             0 => false,
             _ => true,
         }
     }
 
-    pub fn new(ipv6enabled: bool) -> Option<(SyncSender<Control>, Receiver<Event>)> {
-        let tox = unsafe { tox_new(ipv6enabled as u8) };
+    pub fn new(opts: &mut Tox_Options) -> Option<(SyncSender<Control>, Receiver<Event>)> {
+        let tox = unsafe { tox_new(opts as *mut _) };
         if tox.is_null() {
             return None;
         }
@@ -740,7 +738,7 @@ impl Backend {
             FileDataRemaining(friend, num, ty, ret) =>
                 ret.send(self.file_data_remaining(friend, num, ty)),
             BootstrapFromAddress(addr, ip6, port, id, ret) =>
-                ret.send(self.bootstrap_from_address(addr, ip6, port, id)),
+                ret.send(self.bootstrap_from_address(addr, port, id)),
             Isconnected(ret) =>
                 ret.send(self.is_connected()),
             Save(ret) =>
@@ -752,17 +750,17 @@ impl Backend {
     }
 
     fn save(&mut self) -> Vec<u8> {
-        let size = unsafe { tox_size(self.raw) as uint };
+        let size = unsafe { tox_size(&*self.raw) as uint };
         let mut vec = Vec::with_capacity(size);
         unsafe {
-            tox_save(self.raw, vec.as_mut_ptr());
+            tox_save(&*self.raw, vec.as_mut_ptr());
             vec.set_len(size);
         }
         vec
     }
 
     fn load(&mut self, mut data: Vec<u8>) -> Result<(), ()> {
-        match unsafe { tox_load(self.raw, data.as_mut_ptr(), data.len() as u32) } {
+        match unsafe { tox_load(self.raw, data.as_ptr(), data.len() as u32) } {
             0 => Ok(()),
             _ => Err(()),
         }
@@ -817,28 +815,28 @@ extern fn on_friend_request(_: *mut Tox, public_key: *const u8, data: *const u8,
     send_or_stop!(internal, FriendRequest(box id, msg));
 }
 
-extern fn on_friend_message(_: *mut Tox, friendnumber: i32, msg: *mut u8, length: u16,
+extern fn on_friend_message(_: *mut Tox, friendnumber: i32, msg: *const u8, length: u16,
                             internal: *mut c_void) {
     let internal = get_int!(internal);
     let msg = parse_string!(msg, length);
     send_or_stop!(internal, FriendMessage(friendnumber, msg));
 }
 
-extern fn on_friend_action(_: *mut Tox, friendnumber: i32, act: *mut u8, length: u16,
+extern fn on_friend_action(_: *mut Tox, friendnumber: i32, act: *const u8, length: u16,
                            internal: *mut c_void) {
     let internal = get_int!(internal);
     let act = parse_string!(act, length);
     send_or_stop!(internal, FriendAction(friendnumber, act));
 }
 
-extern fn on_name_change(_: *mut Tox, friendnumber: i32, new: *mut u8, length: u16,
+extern fn on_name_change(_: *mut Tox, friendnumber: i32, new: *const u8, length: u16,
                          internal: *mut c_void) {
     let internal = get_int!(internal);
     let new = parse_string!(new, length);
     send_or_stop!(internal, NameChange(friendnumber, new));
 }
 
-extern fn on_status_message(_: *mut Tox, friendnumber: i32, new: *mut u8, length: u16,
+extern fn on_status_message(_: *mut Tox, friendnumber: i32, new: *const u8, length: u16,
                             internal: *mut c_void) {
     let internal = get_int!(internal);
     let new = parse_string!(new, length);
@@ -879,7 +877,7 @@ extern fn on_connection_status(_: *mut Tox, friendnumber: i32, status: u8,
     send_or_stop!(internal, ConnectionStatus(friendnumber, status));
 }
 
-extern fn on_group_invite(_: *mut Tox, friendnumber: i32, group_public_key: *mut u8,
+extern fn on_group_invite(_: *mut Tox, friendnumber: i32, group_public_key: *const u8,
                           internal: *mut c_void) {
     let internal = get_int!(internal);
     let group = ClientId { raw: unsafe { ptr::read(group_public_key as *const _) } };
@@ -887,14 +885,14 @@ extern fn on_group_invite(_: *mut Tox, friendnumber: i32, group_public_key: *mut
 }
 
 extern fn on_group_message(_: *mut Tox, groupnumber: i32, frindgroupnumber: i32,
-                           message: *mut u8, len: u16, internal: *mut c_void) {
+                           message: *const u8, len: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
     let msg = parse_string!(message, len);
     send_or_stop!(internal, GroupMessage(groupnumber, frindgroupnumber, msg));
 }
 
 extern fn on_group_action(_: *mut Tox, groupnumber: i32, frindgroupnumber: i32,
-                           action: *mut u8, len: u16, internal: *mut c_void) {
+                           action: *const u8, len: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
     let action = parse_string!(action, len);
     send_or_stop!(internal, GroupMessage(groupnumber, frindgroupnumber, action));
@@ -913,7 +911,7 @@ extern fn on_group_namelist_change(_: *mut Tox, groupnumber: i32, peernumber: i3
 }
 
 extern fn on_file_send_request(_: *mut Tox, friendnumber: i32, filenumber: u8,
-                               filesize: u64, filename: *mut u8, len: u16,
+                               filesize: u64, filename: *const u8, len: u16,
                                internal: *mut c_void) {
     let internal = get_int!(internal);
     let slice = to_slice(filename as *const u8, len as uint);
@@ -928,7 +926,7 @@ extern fn on_file_send_request(_: *mut Tox, friendnumber: i32, filenumber: u8,
 }
 
 extern fn on_file_control(_: *mut Tox, friendnumber: i32, receive_send: u8,
-                          filenumber: u8, control_type: u8, data: *mut u8, len: u16,
+                          filenumber: u8, control_type: u8, data: *const u8, len: u16,
                           internal: *mut c_void) {
     let internal = get_int!(internal);
     let ty = match control_type as u32 {
@@ -948,7 +946,7 @@ extern fn on_file_control(_: *mut Tox, friendnumber: i32, receive_send: u8,
     send_or_stop!(internal, FileControl(friendnumber, tt, filenumber, ty, data));
 }
 
-extern fn on_file_data(_: *mut Tox, friendnumber: i32, filenumber: u8, data: *mut u8,
+extern fn on_file_data(_: *mut Tox, friendnumber: i32, filenumber: u8, data: *const u8,
                        len: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
     let data = Vec::from_slice(to_slice(data as *const u8, len as uint));

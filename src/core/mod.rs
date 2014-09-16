@@ -1,5 +1,6 @@
 use std::{fmt};
 use std::from_str::{FromStr};
+use std::c_str::{ToCStr};
 //use self::ll;
 
 mod backend;
@@ -206,6 +207,57 @@ pub enum Faerr {
 pub enum TransferType {
     Receiving,
     Sending,
+}
+
+/**
+    A `Tox_Option` struct wrapper
+
+    Usage:
+    ```
+        let txo = ToxOptions::new().ipv6().proxy("[proxy address]", port);
+        let tox = Tox::new(txo);
+    ```
+*/
+pub struct ToxOptions(ll::Tox_Options);
+
+impl ToxOptions {
+    pub fn new() -> ToxOptions {
+        ToxOptions(ll::Tox_Options {
+            ipv6enabled: 0,
+            udp_disabled: 0 as ll::uint8_t,
+            proxy_enabled: 0 as ll::uint8_t,
+            proxy_address: [0 as ::libc::c_char, ..256u],
+            proxy_port: 0 as ll::uint16_t,
+        })
+    }
+
+    pub fn ipv6(self) -> ToxOptions {
+        let ToxOptions(mut txo) = self;
+        txo.ipv6enabled = 1 as ll::uint8_t;
+        ToxOptions(txo)
+    }
+
+    pub fn no_udp(self) -> ToxOptions {
+        let ToxOptions(mut txo) = self;
+        txo.udp_disabled = 1 as ll::uint8_t;
+        ToxOptions(txo)
+    }
+
+    pub fn proxy(self, addr: &str, port: u16) -> ToxOptions {
+        if addr.len() >= 256 {
+            fail!("proxy address is too long");
+        }
+
+        let ToxOptions(mut txo) = self;
+        let c_str = addr.to_c_str();
+        unsafe {
+            ::std::ptr::copy_memory(txo.proxy_address.as_mut_ptr(), c_str.unwrap(), addr.len() + 1);
+        }
+
+        txo.proxy_enabled = 1 as ll::uint8_t;
+        txo.proxy_port = port as ll::uint16_t;
+        ToxOptions(txo)
+    }
 }
 
 pub struct Tox {
@@ -458,8 +510,9 @@ impl Tox {
         forward!(self, backend::Isconnected, ->)
     }
 
-    pub fn new(ipv6enabled: bool) -> Option<Tox> {
-        let (ctrl, events) = match backend::Backend::new(ipv6enabled) {
+    pub fn new(opts: ToxOptions) -> Option<Tox> {
+        let ToxOptions(mut txo) = opts;
+        let (ctrl, events) = match backend::Backend::new(&mut txo) {
             Some(x) => x,
             None => return None,
         };

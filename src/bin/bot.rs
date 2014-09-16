@@ -17,7 +17,7 @@ static GROUPCHAT_ADDR: &'static str =
 static BOT_NAME: &'static str = "mahkohBot";
 
 fn main() {
-    let tox = Tox::new(false).unwrap();
+    let tox = Tox::new(ToxOptions::new()).unwrap();
     tox.set_name(BOT_NAME.to_string()).unwrap();
     
     let bootstrap_key = from_str(BOOTSTRAP_KEY).unwrap();
