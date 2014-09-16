@@ -61,7 +61,7 @@ pub struct Tox_Options {
     pub ipv6enabled: uint8_t,
     pub udp_disabled: uint8_t,
     pub proxy_enabled: uint8_t,
-    pub proxy_address: [::libc::c_char, ..256u],
+    pub proxy_address: [u8, ..256u],
     pub proxy_port: uint16_t,
 }
 
