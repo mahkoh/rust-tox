@@ -1,6 +1,6 @@
 use std::{fmt};
 use std::from_str::{FromStr};
-use self::ll::*;
+//use self::ll;
 
 mod backend;
 mod ll;
@@ -166,40 +166,40 @@ pub enum ConnectionStatus {
 #[repr(u32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum UserStatus {
-    UserStatusNone = TOX_USERSTATUS_NONE,
-    UserStatusAway = TOX_USERSTATUS_AWAY,
-    UserStatusBusy = TOX_USERSTATUS_BUSY,
+    UserStatusNone = ll::TOX_USERSTATUS_NONE,
+    UserStatusAway = ll::TOX_USERSTATUS_AWAY,
+    UserStatusBusy = ll::TOX_USERSTATUS_BUSY,
 }
 
 #[repr(u32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum ChatChange {
-    ChatChangePeerAdd = TOX_CHAT_CHANGE_PEER_ADD,
-    ChatChangePeerDel = TOX_CHAT_CHANGE_PEER_DEL,
-    ChatChangePeerName = TOX_CHAT_CHANGE_PEER_NAME,
+    ChatChangePeerAdd = ll::TOX_CHAT_CHANGE_PEER_ADD,
+    ChatChangePeerDel = ll::TOX_CHAT_CHANGE_PEER_DEL,
+    ChatChangePeerName = ll::TOX_CHAT_CHANGE_PEER_NAME,
 }
 
 #[repr(u32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum ControlType {
-    ControlAccept = TOX_FILECONTROL_ACCEPT,
-    ControlPause = TOX_FILECONTROL_PAUSE,
-    ControlKill = TOX_FILECONTROL_KILL,
-    ControlFinished = TOX_FILECONTROL_FINISHED,
-    ControlResumeBroken = TOX_FILECONTROL_RESUME_BROKEN,
+    ControlAccept = ll::TOX_FILECONTROL_ACCEPT,
+    ControlPause = ll::TOX_FILECONTROL_PAUSE,
+    ControlKill = ll::TOX_FILECONTROL_KILL,
+    ControlFinished = ll::TOX_FILECONTROL_FINISHED,
+    ControlResumeBroken = ll::TOX_FILECONTROL_RESUME_BROKEN,
 }
 
 #[repr(i32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum Faerr {
-    FaerrToolong = TOX_FAERR_TOOLONG,
-    FaerrNomessage = TOX_FAERR_NOMESSAGE,
-    FaerrOwnkey = TOX_FAERR_OWNKEY,
-    FaerrAlreadysent = TOX_FAERR_ALREADYSENT,
-    FaerrUnknown = TOX_FAERR_UNKNOWN,
-    FaerrBadchecksum = TOX_FAERR_BADCHECKSUM,
-    FaerrSetnewnospam = TOX_FAERR_SETNEWNOSPAM,
-    FaerrNomem = TOX_FAERR_NOMEM,
+    FaerrToolong = ll::TOX_FAERR_TOOLONG,
+    FaerrNomessage = ll::TOX_FAERR_NOMESSAGE,
+    FaerrOwnkey = ll::TOX_FAERR_OWNKEY,
+    FaerrAlreadysent = ll::TOX_FAERR_ALREADYSENT,
+    FaerrUnknown = ll::TOX_FAERR_UNKNOWN,
+    FaerrBadchecksum = ll::TOX_FAERR_BADCHECKSUM,
+    FaerrSetnewnospam = ll::TOX_FAERR_SETNEWNOSPAM,
+    FaerrNomem = ll::TOX_FAERR_NOMEM,
 }
 
 #[deriving(Clone, PartialEq, Eq)]

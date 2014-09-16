@@ -4,3 +4,4 @@ target
 doc
 !.gitignore
 !.tox.d
+Cargo\.lock
