@@ -3,5 +3,5 @@ name = "tox"
 version = "0.1.0"
 authors = [ ]
 
-[[lib]]
+[lib]
 name = "tox"

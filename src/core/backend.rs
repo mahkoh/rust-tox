@@ -173,7 +173,7 @@ impl Backend {
         }
     }
 
-    fn send_message_withid(&mut self, friendnumber: i32, theid: u32,
+/*    fn send_message_withid(&mut self, friendnumber: i32, theid: u32,
                                mut msg: String) -> Result<u32, ()> {
         let res = unsafe {
             tox_send_message_withid(self.raw, friendnumber, theid,
@@ -183,7 +183,7 @@ impl Backend {
             0 => Err(()),
             n => Ok(n),
         }
-    }
+    }*/
 
     fn send_action(&mut self, friendnumber: i32, mut action: String) -> Result<u32, ()> {
         let res = unsafe {
@@ -196,7 +196,7 @@ impl Backend {
         }
     }
 
-    fn send_action_withid(&mut self, friendnumber: i32, theid: u32,
+/*    fn send_action_withid(&mut self, friendnumber: i32, theid: u32,
                           mut action: String) -> Result<u32, ()> {
         let res = unsafe {
             tox_send_action_withid(self.raw, friendnumber, theid,
@@ -206,7 +206,7 @@ impl Backend {
             0 => Err(()),
             n => Ok(n),
         }
-    }
+    }*/
 
     fn set_name(&mut self, mut name: String) -> Result<(),()> {
         let res = unsafe {
@@ -355,9 +355,9 @@ impl Backend {
         }
     }
 
-    fn set_sends_receipts(&mut self, friendnumber: i32, yesno: bool) {
-        unsafe { tox_set_sends_receipts(self.raw, friendnumber, yesno as i32); }
-    }
+//    fn set_sends_receipts(&mut self, friendnumber: i32, yesno: bool) {
+//        unsafe { tox_set_sends_receipts(self.raw, friendnumber, yesno as i32); }
+//    }
 
     fn count_friendlist(&mut self) -> u32 {
         unsafe { tox_count_friendlist(self.raw) }
@@ -640,8 +640,8 @@ impl Backend {
                 }
             }
 
-            let interval = unsafe { tox_do_interval(self.raw) as u64 };
-            timer::sleep(interval);
+            let interval = unsafe { tox_do_interval(self.raw) as i64 };
+            timer::sleep(::std::time::Duration::milliseconds(interval));
         }
     }
 
@@ -665,12 +665,12 @@ impl Backend {
                 ret.send(self.friend_exists(friend)),
             SendMessage(friend, msg, ret) =>
                 ret.send(self.send_message(friend, msg)),
-            SendMessageWithid(friend, id, msg, ret) => 
-                ret.send(self.send_message_withid(friend, id, msg)),
+//            SendMessageWithid(friend, id, msg, ret) => 
+//                ret.send(self.send_message_withid(friend, id, msg)),
             SendAction(friend, act, ret) =>
                 ret.send(self.send_action(friend, act)),
-            SendActionWithid(friend, id, act, ret) => 
-                ret.send(self.send_action_withid(friend, id, act)),
+//            SendActionWithid(friend, id, act, ret) => 
+//                ret.send(self.send_action_withid(friend, id, act)),
             SetName(name, ret) =>
                 ret.send(self.set_name(name)),
             GetSelfName(ret) =>
@@ -695,8 +695,8 @@ impl Backend {
                 ret.send(self.set_user_is_typing(friend, is)),
             GetIsTyping(friend, ret) =>
                 ret.send(self.get_is_typing(friend)),
-            SetSendsReceipts(friend, send) =>
-                self.set_sends_receipts(friend, send),
+//            SetSendsReceipts(friend, send) =>
+//                self.set_sends_receipts(friend, send),
             CountFriendlist(ret) =>
                 ret.send(self.count_friendlist()),
             GetNumOnlineFriends(ret) =>

@@ -72,6 +72,6 @@ fn main() {
                 _ => { }
             }
         }
-        std::io::timer::sleep(50);
+        std::io::timer::sleep(std::time::Duration::milliseconds(50));
     }
 }
