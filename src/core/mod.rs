@@ -1,6 +1,5 @@
 use std::{fmt};
 use std::from_str::{FromStr};
-//use self::ll;
 
 mod backend;
 mod ll;
@@ -206,6 +205,57 @@ pub enum Faerr {
 pub enum TransferType {
     Receiving,
     Sending,
+}
+
+
+/// A `Tox_Option` struct wrapper
+///
+/// Usage:
+/// ```
+///     let txo = ToxOptions::new().ipv6().proxy("[proxy address]", port);
+///     let tox = Tox::new(txo);
+/// ```
+pub struct ToxOptions {
+    txo: ll::Tox_Options
+}
+
+impl ToxOptions {
+    /// Create a default ToxOptions struct
+    pub fn new() -> ToxOptions {
+        ToxOptions {
+            txo: ll::Tox_Options {
+                ipv6enabled: 0,
+                udp_disabled: 0,
+                proxy_enabled: 0,
+                proxy_address: [0u8, ..256u],
+                proxy_port: 0,
+            }
+        }
+    }
+
+    /// Enable IPv6
+    pub fn ipv6(mut self) -> ToxOptions {
+        self.txo.ipv6enabled = 1;
+        self
+    }
+
+    /// Disable UDP
+    pub fn no_udp(mut self) -> ToxOptions {
+        self.txo.udp_disabled = 1;
+        self
+    }
+
+    /// Use a proxy
+    pub fn proxy(mut self, addr: &str, port: u16) -> ToxOptions {
+        if addr.len() >= 256 {
+            fail!("proxy address is too long");
+        }
+
+        self.txo.proxy_address.as_mut_slice().clone_from_slice(addr.as_bytes());
+        self.txo.proxy_enabled = 1;
+        self.txo.proxy_port = port;
+        self
+    }
 }
 
 pub struct Tox {
@@ -458,8 +508,8 @@ impl Tox {
         forward!(self, backend::Isconnected, ->)
     }
 
-    pub fn new(ipv6enabled: bool) -> Option<Tox> {
-        let (ctrl, events) = match backend::Backend::new(ipv6enabled) {
+    pub fn new(mut opts: ToxOptions) -> Option<Tox> {
+        let (ctrl, events) = match backend::Backend::new(&mut opts.txo) {
             Some(x) => x,
             None => return None,
         };
