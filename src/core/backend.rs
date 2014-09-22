@@ -12,9 +12,9 @@ use core::{Address, ClientId, Online, Offline, MAX_NAME_LENGTH,
            ControlFinished, ControlResumeBroken, Faerr, FaerrToolong, FaerrNomessage,
            FaerrOwnkey, FaerrAlreadysent, FaerrUnknown, FaerrBadchecksum,
            FaerrSetnewnospam, FaerrNomem, Event, FriendRequest, FriendMessage,
-           FriendAction, NameChange, StatusMessage, UserStatus, TypingChange, ReadReceipt,
-           ConnectionStatus, GroupInvite, GroupMessage, GroupNamelistChange,
-           FileSendRequest, FileControl, FileData};
+           FriendAction, NameChange, StatusMessage, UserStatus, UserStatusVar,
+           TypingChange, ReadReceipt, ConnectionStatus, ConnectionStatusVar, GroupInvite,
+           GroupMessage, GroupNamelistChange, FileSendRequest, FileControl, FileData};
 use libc::{c_void};
 
 pub enum Control {
@@ -64,7 +64,7 @@ pub enum Control {
     FileSendData(i32, u8, Vec<u8>, Sender<Result<(), ()>>),
     FileDataSize(i32, Sender<Result<i32, ()>>),
     FileDataRemaining(i32, u8, TransferType, Sender<Result<u64, ()>>),
-    BootstrapFromAddress(String, bool, u16, Box<ClientId>, Sender<Result<(), ()>>),
+    BootstrapFromAddress(String, u16, Box<ClientId>, Sender<Result<(), ()>>),
     Isconnected(Sender<bool>),
     Kill,
     Save(Sender<Vec<u8>>),
@@ -90,8 +90,7 @@ impl Backend {
         adr
     }
 
-    fn add_friend(&mut self, mut address: Box<Address>,
-                  mut msg: String) -> Result<i32, Faerr> {
+    fn add_friend(&mut self, address: Box<Address>, msg: String) -> Result<i32, Faerr> {
         let res = unsafe {
             tox_add_friend(self.raw, &*address as *const _ as *const _,
                            msg.as_bytes().as_ptr(), msg.len() as u16)
@@ -117,7 +116,7 @@ impl Backend {
         }
     }
 
-    fn get_friend_number(&mut self, mut client_id: Box<ClientId>) -> Result<i32, ()> {
+    fn get_friend_number(&mut self, client_id: Box<ClientId>) -> Result<i32, ()> {
         let res = unsafe {
             tox_get_friend_number(&*self.raw, client_id.raw.as_ptr())
         };
@@ -417,8 +416,7 @@ impl Backend {
         }
     }
 
-    fn invite_friend(&mut self, friendnumber: i32,
-                         groupnumber: i32) -> Result<(), ()> {
+    fn invite_friend(&mut self, friendnumber: i32, groupnumber: i32) -> Result<(), ()> {
         match unsafe { tox_invite_friend(self.raw, friendnumber, groupnumber) } {
             0 => Ok(()),
             _ => Err(()),
@@ -426,7 +424,7 @@ impl Backend {
     }
 
     fn join_groupchat(&mut self, friendnumber: i32,
-                          mut fgpk: Box<ClientId>) -> Result<i32, ()> {
+                      fgpk: Box<ClientId>) -> Result<i32, ()> {
         let res = unsafe {
             tox_join_groupchat(self.raw, friendnumber, fgpk.raw.as_ptr())
         };
@@ -437,7 +435,7 @@ impl Backend {
     }
 
     fn group_message_send(&mut self, groupnumber: i32,
-                              mut msg: String) -> Result<(), ()> {
+                          mut msg: String) -> Result<(), ()> {
         let res = unsafe {
             tox_group_message_send(self.raw, groupnumber, msg.as_mut_vec().as_ptr(),
                                    msg.len() as u32)
@@ -448,8 +446,7 @@ impl Backend {
         }
     }
 
-    fn group_action_send(&mut self, groupnumber: i32,
-                             mut act: String) -> Result<(), ()> {
+    fn group_action_send(&mut self, groupnumber: i32, mut act: String) -> Result<(), ()> {
         let res = unsafe {
             tox_group_action_send(self.raw, groupnumber, act.as_mut_vec().as_ptr(),
                                   act.len() as u32)
@@ -511,7 +508,7 @@ impl Backend {
 
     fn new_file_sender(&mut self, friendnumber: i32, filesize: u64,
                            filename: Path) -> Result<i32, ()> {
-        let mut filename = filename.into_vec();
+        let filename = filename.into_vec();
         let res = unsafe {
             tox_new_file_sender(self.raw, friendnumber, filesize,
                                 filename.as_ptr(), filename.len() as u16)
@@ -523,8 +520,8 @@ impl Backend {
     }
 
     fn file_send_control(&mut self, friendnumber: i32, send_receive: TransferType,
-                             filenumber: u8, message_id: u8,
-                             mut data: Vec<u8>) -> Result<(), ()> {
+                         filenumber: u8, message_id: u8,
+                         data: Vec<u8>) -> Result<(), ()> {
         let res = unsafe {
             tox_file_send_control(self.raw, friendnumber, send_receive as u8, filenumber,
                                   message_id, data.as_ptr(), data.len() as u16)
@@ -536,7 +533,7 @@ impl Backend {
     }
 
     fn file_send_data(&mut self, friendnumber: i32, filenumber: u8,
-                          mut data: Vec<u8>) -> Result<(), ()> {
+                      data: Vec<u8>) -> Result<(), ()> {
         let res = unsafe {
             tox_file_send_data(self.raw, friendnumber, filenumber, data.as_ptr(),
                                data.len() as u16)
@@ -567,7 +564,7 @@ impl Backend {
     }
 
     fn bootstrap_from_address(&mut self, mut address: String, port: u16,
-                                  mut public_key: Box<ClientId>) -> Result<(), ()> {
+                              public_key: Box<ClientId>) -> Result<(), ()> {
         let res = unsafe {
             address.push_byte(0);
             tox_bootstrap_from_address(self.raw, address.as_bytes().as_ptr() as *const _,
@@ -737,7 +734,7 @@ impl Backend {
                 ret.send(self.file_data_size(friend)),
             FileDataRemaining(friend, num, ty, ret) =>
                 ret.send(self.file_data_remaining(friend, num, ty)),
-            BootstrapFromAddress(addr, ip6, port, id, ret) =>
+            BootstrapFromAddress(addr, port, id, ret) =>
                 ret.send(self.bootstrap_from_address(addr, port, id)),
             Isconnected(ret) =>
                 ret.send(self.is_connected()),
@@ -759,7 +756,7 @@ impl Backend {
         vec
     }
 
-    fn load(&mut self, mut data: Vec<u8>) -> Result<(), ()> {
+    fn load(&mut self, data: Vec<u8>) -> Result<(), ()> {
         match unsafe { tox_load(self.raw, data.as_ptr(), data.len() as u32) } {
             0 => Ok(()),
             _ => Err(()),
@@ -852,7 +849,7 @@ extern fn on_user_status(_: *mut Tox, friendnumber: i32, status: u8,
         TOX_USERSTATUS_BUSY => UserStatusBusy,
         _ => return,
     };
-    send_or_stop!(internal, UserStatus(friendnumber, status));
+    send_or_stop!(internal, UserStatusVar(friendnumber, status));
 }
 
 extern fn on_typing_change(_: *mut Tox, friendnumber: i32, is_typing: u8,
@@ -874,7 +871,7 @@ extern fn on_connection_status(_: *mut Tox, friendnumber: i32, status: u8,
         1 => Online,
         _ => Offline,
     };
-    send_or_stop!(internal, ConnectionStatus(friendnumber, status));
+    send_or_stop!(internal, ConnectionStatusVar(friendnumber, status));
 }
 
 extern fn on_group_invite(_: *mut Tox, friendnumber: i32, group_public_key: *const u8,

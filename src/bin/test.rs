@@ -8,7 +8,7 @@ fn main() {
     let tox = Tox::new(ToxOptions::new()).unwrap();
     let id =
         from_str("951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F").unwrap();
-    tox.bootstrap_from_address("192.254.75.98".to_string(), false, 33445, box id).unwrap();
+    tox.bootstrap_from_address("192.254.75.98".to_string(), 33445, box id).unwrap();
     let groupbot =
         from_str("56A1ADE4B65B86BCD51CC73E2CD4E542179F47959FE3E0E21B4B0ACDADE51855D34D34D37CB5").unwrap();
     tox.add_friend(box groupbot, "Hello".to_string()).ok().unwrap();
@@ -24,10 +24,10 @@ fn main() {
                     println!("StatusMessage(..)       ");
                     let _ = tox.send_message(id, "invite".to_string());
                 },
-                UserStatus(..)          => println!("UserStatus(..)          "),
+                UserStatusVar(..)       => println!("UserStatusVar(..)       "),
                 TypingChange(..)        => println!("TypingChange(..)        "),
                 ReadReceipt(..)         => println!("ReadReceipt(..)         "),
-                ConnectionStatus(..)    => println!("ConnectionStatus(..)    "),
+                ConnectionStatusVar(..) => println!("ConnectionStatusVar(..) "),
                 GroupInvite(id, group)  => {
                     println!("GroupInvite(..)         ");
                     let _ = tox.join_groupchat(id, group);

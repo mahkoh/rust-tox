@@ -21,7 +21,7 @@ fn main() {
     tox.set_name(BOT_NAME.to_string()).unwrap();
     
     let bootstrap_key = from_str(BOOTSTRAP_KEY).unwrap();
-    tox.bootstrap_from_address(BOOTSTRAP_IP.to_string(), false, BOOTSTRAP_PORT, 
+    tox.bootstrap_from_address(BOOTSTRAP_IP.to_string(), BOOTSTRAP_PORT, 
                                box bootstrap_key).unwrap();
 
     let groupchat_addr = from_str(GROUPCHAT_ADDR).unwrap();
@@ -47,15 +47,6 @@ fn main() {
                         Some(c) => {
                             let msg = match c.at(2) {
                                 "xot"    => Some("https://github.com/mahkoh/Xot"),
-                                "europe" => Some("http://i.imgur.com/mQbQbkf.jpg"),
-                                "usa"    => Some("http://i.imgur.com/OEZTpCr.jpg"),
-                                "germany" => Some("http://a.pomf.se/skymwy.jpg"),
-                                "england" => Some("http://i.imgur.com/egKh0ia.jpg"),
-                                "paris" => Some("http://i.imgur.com/vd8bFUT.jpg"),
-                                "astonex" => Some("astonex pls don't"),
-                                "groupbot" => Some("%ngb"),
-                                "america" => Some("http://i.imgur.com/BWi9YJP.jpg"),
-                                "costanza" => Some("http://i.imgur.com/H32aZYe.jpg"),
                                 _ => None,
                             };
                             match msg {

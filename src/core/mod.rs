@@ -17,10 +17,10 @@ pub enum Event {
     FriendAction(i32, String),
     NameChange(i32, String),
     StatusMessage(i32, String),
-    UserStatus(i32, UserStatus),
+    UserStatusVar(i32, UserStatus),
     TypingChange(i32, bool),
     ReadReceipt(i32, u32),
-    ConnectionStatus(i32, ConnectionStatus),
+    ConnectionStatusVar(i32, ConnectionStatus),
     GroupInvite(i32, Box<ClientId>),
     GroupMessage(i32, i32, String),
     GroupNamelistChange(i32, i32, ChatChange),
@@ -499,9 +499,9 @@ impl Tox {
         forward!(self, backend::FileDataRemaining, (friendnumber, filenumber, send_receive), ->)
     }
 
-    pub fn bootstrap_from_address(&self, address: String, ipv6: bool, port: u16,
+    pub fn bootstrap_from_address(&self, address: String, port: u16,
                                   public_key: Box<ClientId>) -> Result<(), ()> {
-        forward!(self, backend::BootstrapFromAddress, (address, ipv6, port, public_key), ->)
+        forward!(self, backend::BootstrapFromAddress, (address, port, public_key), ->)
     }
 
     pub fn is_connected(&self) -> bool {
