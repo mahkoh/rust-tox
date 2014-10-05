@@ -4,6 +4,7 @@ use std::io::{timer};
 use std::num::{Int};
 use std::raw::{Slice};
 use std::mem::{transmute};
+use std::c_vec::{CVec};
 use core::ll::*;
 use core::{Address, ClientId, Online, Offline, MAX_NAME_LENGTH,
            UserStatusAway, UserStatusNone, UserStatusBusy,
@@ -14,8 +15,10 @@ use core::{Address, ClientId, Online, Offline, MAX_NAME_LENGTH,
            FaerrSetnewnospam, FaerrNomem, Event, FriendRequest, FriendMessage,
            FriendAction, NameChange, StatusMessage, UserStatus, UserStatusVar,
            TypingChange, ReadReceipt, ConnectionStatus, ConnectionStatusVar, GroupInvite,
-           GroupMessage, GroupNamelistChange, FileSendRequest, FileControl, FileData};
-use libc::{c_void};
+           GroupMessage, GroupNamelistChange, FileSendRequest, FileControl, FileData,
+           AvatarInfo, AvatarNone, AvatarPNG, AvatarData, AvatarFormat,
+           AVATAR_MAX_DATA_LENGTH, Hash};
+use libc::{c_void, c_uint};
 
 pub enum Control {
     GetAddress(Sender<Address>),
@@ -27,9 +30,7 @@ pub enum Control {
     GetFriendConnectionStatus(i32, Sender<Result<ConnectionStatus, ()>>),
     FriendExists(i32, Sender<bool>),
     SendMessage(i32, String, Sender<Result<u32, ()>>),
-    SendMessageWithid(i32, u32, String, Sender<Result<u32, ()>>),
     SendAction(i32, String, Sender<Result<u32, ()>>),
-    SendActionWithid(i32, u32, String, Sender<Result<u32, ()>>),
     SetName(String, Sender<Result<(),()>>),
     GetSelfName(Sender<Result<String, ()>>),
     GetName(i32, Sender<Result<String, ()>>),
@@ -52,13 +53,19 @@ pub enum Control {
     DelGroupchat(i32, Sender<Result<(), ()>>),
     GroupPeername(i32, i32, Sender<Result<String, ()>>),
     InviteFriend(i32, i32, Sender<Result<(), ()>>),
-    JoinGroupchat(i32, Box<ClientId>, Sender<Result<i32, ()>>),
+    JoinGroupchat(i32, Vec<u8>, Sender<Result<i32, ()>>),
     GroupMessageSend(i32, String, Sender<Result<(), ()>>),
     GroupActionSend(i32, String, Sender<Result<(), ()>>),
     GroupNumberPeers(i32, Sender<Result<i32, ()>>),
     GroupGetNames(i32, Sender<Result<Vec<Option<String>>, ()>>),
     CountChatlist(Sender<u32>),
     GetChatlist(Sender<Vec<i32>>),
+    SetAvatar(AvatarFormat, Vec<u8>, Sender<Result<(), ()>>),
+    UnsetAvatar,
+    GetSelfAvatar(Sender<Result<(AvatarFormat, Vec<u8>, Hash), ()>>),
+    RequestAvatarInfo(i32, Sender<Result<(), ()>>),
+    RequestAvatarData(i32, Sender<Result<(), ()>>),
+    SendAvatarInfo(i32, Sender<Result<(), ()>>),
     NewFileSender(i32, u64, Path, Sender<Result<i32, ()>>),
     FileSendControl(i32, TransferType, u8, u8, Vec<u8>, Sender<Result<(), ()>>),
     FileSendData(i32, u8, Vec<u8>, Sender<Result<(), ()>>),
@@ -172,18 +179,6 @@ impl Backend {
         }
     }
 
-/*    fn send_message_withid(&mut self, friendnumber: i32, theid: u32,
-                               mut msg: String) -> Result<u32, ()> {
-        let res = unsafe {
-            tox_send_message_withid(self.raw, friendnumber, theid,
-                                    msg.as_mut_vec().as_mut_ptr(), msg.len() as u32)
-        };
-        match res {
-            0 => Err(()),
-            n => Ok(n),
-        }
-    }*/
-
     fn send_action(&mut self, friendnumber: i32, mut action: String) -> Result<u32, ()> {
         let res = unsafe {
             tox_send_action(self.raw, friendnumber,
@@ -194,18 +189,6 @@ impl Backend {
             n => Ok(n),
         }
     }
-
-/*    fn send_action_withid(&mut self, friendnumber: i32, theid: u32,
-                          mut action: String) -> Result<u32, ()> {
-        let res = unsafe {
-            tox_send_action_withid(self.raw, friendnumber, theid,
-                                   action.as_mut_vec().as_mut_ptr(), action.len() as u32)
-        };
-        match res {
-            0 => Err(()),
-            n => Ok(n),
-        }
-    }*/
 
     fn set_name(&mut self, mut name: String) -> Result<(),()> {
         let res = unsafe {
@@ -354,10 +337,6 @@ impl Backend {
         }
     }
 
-//    fn set_sends_receipts(&mut self, friendnumber: i32, yesno: bool) {
-//        unsafe { tox_set_sends_receipts(self.raw, friendnumber, yesno as i32); }
-//    }
-
     fn count_friendlist(&mut self) -> u32 {
         unsafe { tox_count_friendlist(&*self.raw) }
     }
@@ -424,9 +403,9 @@ impl Backend {
     }
 
     fn join_groupchat(&mut self, friendnumber: i32,
-                      fgpk: Box<ClientId>) -> Result<i32, ()> {
+                      data: Vec<u8>) -> Result<i32, ()> {
         let res = unsafe {
-            tox_join_groupchat(self.raw, friendnumber, fgpk.raw.as_ptr())
+            tox_join_groupchat(self.raw, friendnumber, data.as_ptr(), data.len() as u16)
         };
         match res {
             -1 => Err(()),
@@ -438,7 +417,7 @@ impl Backend {
                           mut msg: String) -> Result<(), ()> {
         let res = unsafe {
             tox_group_message_send(self.raw, groupnumber, msg.as_mut_vec().as_ptr(),
-                                   msg.len() as u32)
+                                   msg.len() as u16)
         };
         match res {
             0 => Ok(()),
@@ -449,7 +428,7 @@ impl Backend {
     fn group_action_send(&mut self, groupnumber: i32, mut act: String) -> Result<(), ()> {
         let res = unsafe {
             tox_group_action_send(self.raw, groupnumber, act.as_mut_vec().as_ptr(),
-                                  act.len() as u32)
+                                  act.len() as u16)
         };
         match res {
             0 => Ok(()),
@@ -504,6 +483,73 @@ impl Backend {
             vec.set_len(num as uint);
         }
         vec
+    }
+
+    fn set_avatar(&mut self, format: AvatarFormat, data: Vec<u8>) -> Result<(), ()> {
+        let res = unsafe {
+            tox_set_avatar(self.raw, format as u8, data.as_ptr(), data.len() as u32)
+        };
+        match res {
+            0 => Ok(()),
+            _ => Err(()),
+        }
+    }
+
+    fn unset_avatar(&mut self) {
+        unsafe { tox_unset_avatar(self.raw); }
+    }
+
+    fn get_self_avatar(&mut self) -> Result<(AvatarFormat, Vec<u8>, Hash), ()> {
+        let mut data = Vec::with_capacity(AVATAR_MAX_DATA_LENGTH);
+        let mut hash: Hash = unsafe { std::mem::uninitialized() };
+        let mut format = 0;
+        let mut length = 0;
+        let res = unsafe {
+            tox_get_self_avatar(self.raw as *const _, &mut format, data.as_mut_ptr(),
+                                &mut length, AVATAR_MAX_DATA_LENGTH as u32,
+                                hash.hash.as_mut_ptr())
+        };
+        if res == -1 {
+            return Err(());
+        }
+        unsafe { data.set_len(length as uint); }
+        data.shrink_to_fit();
+        let format = match format as c_uint {
+            TOX_AVATAR_FORMAT_NONE => AvatarNone,
+            TOX_AVATAR_FORMAT_PNG => AvatarPNG,
+            _ => return Err(()),
+        };
+        Ok((format, data, hash))
+    }
+
+    fn request_avatar_info(&self, friendnumber: i32) -> Result<(), ()> {
+        let res = unsafe {
+            tox_request_avatar_info(self.raw as *const _, friendnumber)
+        };
+        match res {
+            0 => Ok(()),
+            _ => Err(()),
+        }
+    }
+
+    fn request_avatar_data(&self, friendnumber: i32) -> Result<(), ()> {
+        let res = unsafe {
+            tox_request_avatar_data(self.raw as *const _, friendnumber)
+        };
+        match res {
+            0 => Ok(()),
+            _ => Err(()),
+        }
+    }
+
+    fn send_avatar_info(&mut self, friendnumber: i32) -> Result<(), ()> {
+        let res = unsafe {
+            tox_send_avatar_info(self.raw, friendnumber)
+        };
+        match res {
+            0 => Ok(()),
+            _ => Err(()),
+        }
     }
 
     fn new_file_sender(&mut self, friendnumber: i32, filesize: u64,
@@ -566,7 +612,7 @@ impl Backend {
     fn bootstrap_from_address(&mut self, mut address: String, port: u16,
                               public_key: Box<ClientId>) -> Result<(), ()> {
         let res = unsafe {
-            address.push_byte(0);
+            address.as_mut_vec().push(0);
             tox_bootstrap_from_address(self.raw, address.as_bytes().as_ptr() as *const _,
                                        port.to_be(), public_key.raw.as_ptr())
         };
@@ -592,22 +638,24 @@ impl Backend {
         let mut internal = box Internal { stop: false, events: event_send };
         unsafe {
             let ip = &mut *internal as *mut _ as *mut c_void;
-            tox_callback_friend_request(tox, Some(on_friend_request), ip);
-            tox_callback_friend_message(tox, Some(on_friend_message), ip);
-            tox_callback_friend_action(tox, Some(on_friend_action), ip);
-            tox_callback_name_change(tox, Some(on_name_change), ip);
-            tox_callback_status_message(tox, Some(on_status_message), ip);
-            tox_callback_user_status(tox, Some(on_user_status), ip);
-            tox_callback_typing_change(tox, Some(on_typing_change), ip);
-            tox_callback_read_receipt(tox, Some(on_read_receipt), ip);
-            tox_callback_connection_status(tox, Some(on_connection_status), ip);
-            tox_callback_group_invite(tox, Some(on_group_invite), ip);
-            tox_callback_group_message(tox, Some(on_group_message), ip);
-            tox_callback_group_action(tox, Some(on_group_action), ip);
-            tox_callback_group_namelist_change(tox, Some(on_group_namelist_change), ip);
-            tox_callback_file_send_request(tox, Some(on_file_send_request), ip);
-            tox_callback_file_control(tox, Some(on_file_control), ip);
-            tox_callback_file_data(tox, Some(on_file_data), ip);
+            tox_callback_friend_request(        tox, Some(on_friend_request),        ip);
+            tox_callback_friend_message(        tox, Some(on_friend_message),        ip);
+            tox_callback_friend_action(         tox, Some(on_friend_action),         ip);
+            tox_callback_name_change(           tox, Some(on_name_change),           ip);
+            tox_callback_status_message(        tox, Some(on_status_message),        ip);
+            tox_callback_user_status(           tox, Some(on_user_status),           ip);
+            tox_callback_typing_change(         tox, Some(on_typing_change),         ip);
+            tox_callback_read_receipt(          tox, Some(on_read_receipt),          ip);
+            tox_callback_connection_status(     tox, Some(on_connection_status),     ip);
+            tox_callback_group_invite(          tox, Some(on_group_invite),          ip);
+            tox_callback_group_message(         tox, Some(on_group_message),         ip);
+            tox_callback_group_action(          tox, Some(on_group_action),          ip);
+            tox_callback_group_namelist_change( tox, Some(on_group_namelist_change), ip);
+            tox_callback_file_send_request(     tox, Some(on_file_send_request),     ip);
+            tox_callback_file_control(          tox, Some(on_file_control),          ip);
+            tox_callback_file_data(             tox, Some(on_file_data),             ip);
+            tox_callback_avatar_info(           tox, Some(on_avatar_info),           ip);
+            tox_callback_avatar_data(           tox, Some(on_avatar_data),           ip);
         }
         let (control_send, control_recv) = sync_channel(1);
         let backend = Backend {
@@ -660,12 +708,8 @@ impl Backend {
                 ret.send(self.friend_exists(friend)),
             SendMessage(friend, msg, ret) =>
                 ret.send(self.send_message(friend, msg)),
-//            SendMessageWithid(friend, id, msg, ret) => 
-//                ret.send(self.send_message_withid(friend, id, msg)),
             SendAction(friend, act, ret) =>
                 ret.send(self.send_action(friend, act)),
-//            SendActionWithid(friend, id, act, ret) => 
-//                ret.send(self.send_action_withid(friend, id, act)),
             SetName(name, ret) =>
                 ret.send(self.set_name(name)),
             GetSelfName(ret) =>
@@ -724,6 +768,18 @@ impl Backend {
                 ret.send(self.count_chatlist()),
             GetChatlist(ret) =>
                 ret.send(self.get_chatlist()),
+            SetAvatar(format, data, ret) =>
+                ret.send(self.set_avatar(format, data)),
+            UnsetAvatar =>
+                self.unset_avatar(),
+            GetSelfAvatar(ret) =>
+                ret.send(self.get_self_avatar()),
+            RequestAvatarInfo(friend, ret) =>
+                ret.send(self.request_avatar_info(friend)),
+            RequestAvatarData(friend, ret) =>
+                ret.send(self.request_avatar_data(friend)),
+            SendAvatarInfo(friend, ret) =>
+                ret.send(self.send_avatar_info(friend)),
             NewFileSender(friend, size, file, ret) =>
                 ret.send(self.new_file_sender(friend, size, file)),
             FileSendControl(friend, ty, num, msg, data, ret) =>
@@ -874,11 +930,13 @@ extern fn on_connection_status(_: *mut Tox, friendnumber: i32, status: u8,
     send_or_stop!(internal, ConnectionStatusVar(friendnumber, status));
 }
 
-extern fn on_group_invite(_: *mut Tox, friendnumber: i32, group_public_key: *const u8,
+extern fn on_group_invite(_: *mut Tox, friendnumber: i32, data: *const u8, length: u16,
                           internal: *mut c_void) {
     let internal = get_int!(internal);
-    let group = ClientId { raw: unsafe { ptr::read(group_public_key as *const _) } };
-    send_or_stop!(internal, GroupInvite(friendnumber, box group));
+    let data = unsafe {
+        CVec::new(data as *mut _, length as uint).as_mut_slice().to_vec()
+    };
+    send_or_stop!(internal, GroupInvite(friendnumber, data));
 }
 
 extern fn on_group_message(_: *mut Tox, groupnumber: i32, frindgroupnumber: i32,
@@ -914,10 +972,10 @@ extern fn on_file_send_request(_: *mut Tox, friendnumber: i32, filenumber: u8,
     let slice = to_slice(filename as *const u8, len as uint);
     let path = match Path::new_opt(slice) {
         Some(p) => match p.filename() {
-            Some(f) => Vec::from_slice(f),
-            None => Vec::from_slice(b"\xbf\xef"),
+            Some(f) => f.to_vec(),
+            None => b"\xbf\xef".to_vec(),
         },
-        None => Vec::from_slice(b"\xbf\xef"),
+        None => b"\xbf\xef".to_vec(),
     };
     send_or_stop!(internal, FileSendRequest(friendnumber, filenumber, filesize, path));
 }
@@ -939,13 +997,38 @@ extern fn on_file_control(_: *mut Tox, friendnumber: i32, receive_send: u8,
         0 => Receiving,
         _ => return,
     };
-    let data = Vec::from_slice(to_slice(data as *const u8, len as uint));
+    let data = to_slice(data as *const u8, len as uint).to_vec();
     send_or_stop!(internal, FileControl(friendnumber, tt, filenumber, ty, data));
 }
 
 extern fn on_file_data(_: *mut Tox, friendnumber: i32, filenumber: u8, data: *const u8,
                        len: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
-    let data = Vec::from_slice(to_slice(data as *const u8, len as uint));
+    let data = to_slice(data as *const u8, len as uint).to_vec();
     send_or_stop!(internal, FileData(friendnumber, filenumber, data));
+}
+
+extern fn on_avatar_info(_: *mut Tox, friendnumber: i32, format: u8, hash: *mut u8,
+                         internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let format = match format as c_uint {
+        TOX_AVATAR_FORMAT_NONE => AvatarNone,
+        TOX_AVATAR_FORMAT_PNG  => AvatarPNG,
+        _ => return,
+    };
+    let hash = unsafe { ptr::read(hash as *const u8 as *const _) };
+    send_or_stop!(internal, AvatarInfo(friendnumber, format, hash));
+}
+
+extern fn on_avatar_data(_: *mut Tox, friendnumber: i32, format: u8, hash: *mut u8,
+                         data: *mut u8, datalen: u32, internal: *mut c_void) {
+    let internal = get_int!(internal);
+    let format = match format as c_uint {
+        TOX_AVATAR_FORMAT_NONE => AvatarNone,
+        TOX_AVATAR_FORMAT_PNG  => AvatarPNG,
+        _ => return,
+    };
+    let hash = unsafe { ptr::read(hash as *const u8 as *const _) };
+    let data = unsafe { CVec::new(data, datalen as uint).as_mut_slice().to_vec() };
+    send_or_stop!(internal, AvatarData(friendnumber, format, hash, data));
 }

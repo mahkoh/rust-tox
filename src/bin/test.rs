@@ -37,6 +37,8 @@ fn main() {
                 FileSendRequest(..)     => println!("FileSendRequest(..)     "),
                 FileControl(..)         => println!("FileControl(..)         "),
                 FileData(..)            => println!("FileData(..)            "),
+                AvatarInfo(..)          => println!("AvatarInfo(..)          "),
+                AvatarData(..)          => println!("AvatarData(..)          "),
             }
             println!("{:?}", ev);
         }

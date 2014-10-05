@@ -1,14 +1,23 @@
-use std::{fmt};
+use std::{fmt, mem};
 use std::from_str::{FromStr};
 
 mod backend;
 mod ll;
 
-pub static MAX_NAME_LENGTH: uint = 128u;
-pub static MAX_MESSAGE_LENGTH: uint = 1368u;
+pub static MAX_NAME_LENGTH:          uint = 128u;
+pub static MAX_MESSAGE_LENGTH:       uint = 1368u;
 pub static MAX_STATUSMESSAGE_LENGTH: uint = 1007u;
-pub static ID_CLIENT_SIZE: uint = 32u;
-pub static ADDRESS_SIZE: uint = ID_CLIENT_SIZE + 6u;
+pub static ID_CLIENT_SIZE:           uint = 32u;
+pub static ADDRESS_SIZE:             uint = ID_CLIENT_SIZE + 6u;
+pub static AVATAR_MAX_DATA_LENGTH:   uint = 16384u;
+pub static HASH_LENGTH:              uint = 32u;
+
+#[deriving(Clone, Eq, PartialEq)]
+#[repr(u8)]
+pub enum AvatarFormat {
+    AvatarNone = ll::TOX_AVATAR_FORMAT_NONE as u8,
+    AvatarPNG = ll::TOX_AVATAR_FORMAT_PNG as u8,
+}
 
 #[deriving(Clone)]
 pub enum Event {
@@ -21,12 +30,14 @@ pub enum Event {
     TypingChange(i32, bool),
     ReadReceipt(i32, u32),
     ConnectionStatusVar(i32, ConnectionStatus),
-    GroupInvite(i32, Box<ClientId>),
+    GroupInvite(i32, Vec<u8>),
     GroupMessage(i32, i32, String),
     GroupNamelistChange(i32, i32, ChatChange),
     FileSendRequest(i32, u8, u64, Vec<u8>),
     FileControl(i32, TransferType, u8, ControlType, Vec<u8>),
     FileData(i32, u8, Vec<u8>),
+    AvatarInfo(i32, AvatarFormat, Hash),
+    AvatarData(i32, AvatarFormat, Hash, Vec<u8>),
 }
 
 #[repr(C)]
@@ -111,9 +122,9 @@ pub fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
     for i in range(0u, buf.len()) {
         for j in range(0u, 2) {
             buf[i] = (buf[i] << 4) + match s.as_bytes()[2*i + j] as char {
-                c @ '0' .. '9' => (c as u8) - ('0' as u8),
-                c @ 'a' .. 'f' => (c as u8) - ('a' as u8) + 10,
-                c @ 'A' .. 'F' => (c as u8) - ('A' as u8) + 10,
+                c @ '0' ... '9' => (c as u8) - ('0' as u8),
+                c @ 'a' ... 'f' => (c as u8) - ('a' as u8) + 10,
+                c @ 'A' ... 'F' => (c as u8) - ('A' as u8) + 10,
                 _              => return Err(()),
             }
         }
@@ -155,6 +166,24 @@ impl FromStr for ClientId {
         Some(ClientId { raw: id })
     }
 }
+
+pub struct Hash {
+    pub hash: [u8, ..HASH_LENGTH]
+}
+
+impl Clone for Hash {
+    fn clone(&self) -> Hash {
+        Hash { hash: self.hash }
+    }
+}
+
+impl PartialEq for Hash {
+    fn eq(&self, other: &Hash) -> bool {
+        self.hash.as_slice() == other.hash.as_slice()
+    }
+}
+
+impl Eq for Hash { }
 
 #[deriving(Clone, PartialEq, Eq)]
 pub enum ConnectionStatus {
@@ -300,8 +329,7 @@ impl Tox {
         forward!(self, backend::GetAddress, ->)
     }
 
-    pub fn add_friend(&self, address: Box<Address>,
-                      msg: String) -> Result<i32, Faerr> {
+    pub fn add_friend(&self, address: Box<Address>, msg: String) -> Result<i32, Faerr> {
         forward!(self, backend::AddFriend, (address, msg), ->)
     }
 
@@ -336,18 +364,8 @@ impl Tox {
         forward!(self, backend::SendMessage, (friendnumber, msg), ->)
     }
 
-    pub fn send_message_withid(&self, friendnumber: i32, theid: u32,
-                               msg: String) -> Result<u32, ()> {
-        forward!(self, backend::SendMessageWithid, (friendnumber, theid, msg), ->)
-    }
-
     pub fn send_action(&self, friendnumber: i32, action: String) -> Result<u32, ()> {
         forward!(self, backend::SendAction, (friendnumber, action), ->)
-    }
-
-    pub fn send_action_withid(&self, friendnumber: i32, theid: u32,
-                              action: String) -> Result<u32, ()> {
-        forward!(self, backend::SendActionWithid, (friendnumber, theid, action), ->)
     }
 
     pub fn set_name(&self, name: String) -> Result<(),()> {
@@ -440,14 +458,12 @@ impl Tox {
         forward!(self, backend::GroupPeername, (groupnumber, peernumber), ->)
     }
 
-    pub fn invite_friend(&self, friendnumber: i32,
-                         groupnumber: i32) -> Result<(), ()> {
+    pub fn invite_friend(&self, friendnumber: i32, groupnumber: i32) -> Result<(), ()> {
         forward!(self, backend::InviteFriend, (friendnumber, groupnumber), ->)
     }
 
-    pub fn join_groupchat(&self, friendnumber: i32,
-                          fgpk: Box<ClientId>) -> Result<i32, ()> {
-        forward!(self, backend::JoinGroupchat, (friendnumber, fgpk), ->)
+    pub fn join_groupchat(&self, friendnumber: i32, data: Vec<u8>) -> Result<i32, ()> {
+        forward!(self, backend::JoinGroupchat, (friendnumber, data), ->)
     }
 
     pub fn group_message_send(&self, groupnumber: i32,
@@ -455,8 +471,7 @@ impl Tox {
         forward!(self, backend::GroupMessageSend, (groupnumber, message), ->)
     }
 
-    pub fn group_action_send(&self, groupnumber: i32,
-                             action: String) -> Result<(), ()> {
+    pub fn group_action_send(&self, groupnumber: i32, action: String) -> Result<(), ()> {
         forward!(self, backend::GroupActionSend, (groupnumber, action), ->)
     }
 
@@ -471,6 +486,30 @@ impl Tox {
 
     pub fn get_chatlist(&self) -> Vec<i32> {
         forward!(self, backend::GetChatlist, ->)
+    }
+
+    pub fn set_avatar(&self, format: AvatarFormat, data: Vec<u8>) -> Result<(), ()> {
+        forward!(self, backend::SetAvatar, (format, data), ->)
+    }
+
+    pub fn unset_avatar(&self) {
+        forward!(self, backend::UnsetAvatar)
+    }
+
+    pub fn get_self_avatar(&self) -> Result<(AvatarFormat, Vec<u8>, Hash), ()> {
+        forward!(self, backend::GetSelfAvatar, ->)
+    }
+
+    pub fn request_avatar_info(&self, friendnumber: i32) -> Result<(), ()> {
+        forward!(self, backend::RequestAvatarInfo, (friendnumber), ->)
+    }
+
+    pub fn send_avatar_info(&self, friendnumber: i32) -> Result<(), ()> {
+        forward!(self, backend::SendAvatarInfo, (friendnumber), ->)
+    }
+
+    pub fn request_avatar_data(&self, friendnumber: i32) -> Result<(), ()> {
+        forward!(self, backend::RequestAvatarData, (friendnumber), ->)
     }
 
     pub fn new_file_sender(&self, friendnumber: i32, filesize: u64,
@@ -542,5 +581,16 @@ impl<'a> Iterator<Event> for EventIter<'a> {
             Ok(t) => Some(t),
             _ => None,
         }
+    }
+}
+
+pub fn hash(data: &[u8]) -> Result<Hash, ()> {
+    let mut hash: Hash = unsafe { mem::uninitialized() };
+    let res = unsafe {
+        ll::tox_hash(hash.hash.as_mut_ptr(), data.as_ptr(), data.len() as u32)
+    };
+    match res {
+        0 => Ok(hash),
+        _ => Err(()),
     }
 }
