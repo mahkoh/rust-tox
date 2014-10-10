@@ -1,16 +1,17 @@
 use std::{fmt, mem};
 use std::from_str::{FromStr};
+use rust_core::slice::{MutableIntSlice};
 
 mod backend;
 mod ll;
 
-pub static MAX_NAME_LENGTH:          uint = 128u;
-pub static MAX_MESSAGE_LENGTH:       uint = 1368u;
-pub static MAX_STATUSMESSAGE_LENGTH: uint = 1007u;
-pub static ID_CLIENT_SIZE:           uint = 32u;
-pub static ADDRESS_SIZE:             uint = ID_CLIENT_SIZE + 6u;
-pub static AVATAR_MAX_DATA_LENGTH:   uint = 16384u;
-pub static HASH_LENGTH:              uint = 32u;
+pub const MAX_NAME_LENGTH:          uint = 128u;
+pub const MAX_MESSAGE_LENGTH:       uint = 1368u;
+pub const MAX_STATUSMESSAGE_LENGTH: uint = 1007u;
+pub const ID_CLIENT_SIZE:           uint = 32u;
+pub const ADDRESS_SIZE:             uint = ID_CLIENT_SIZE + 6u;
+pub const AVATAR_MAX_DATA_LENGTH:   uint = 16384u;
+pub const HASH_LENGTH:              uint = 32u;
 
 #[deriving(Clone, Eq, PartialEq)]
 #[repr(u8)]
@@ -256,7 +257,7 @@ impl ToxOptions {
                 ipv6enabled: 0,
                 udp_disabled: 0,
                 proxy_enabled: 0,
-                proxy_address: [0u8, ..256u],
+                proxy_address: [0, ..256u],
                 proxy_port: 0,
             }
         }
@@ -280,7 +281,9 @@ impl ToxOptions {
             fail!("proxy address is too long");
         }
 
-        self.txo.proxy_address.as_mut_slice().clone_from_slice(addr.as_bytes());
+        self.txo.proxy_address.as_mut_slice()
+                              .as_unsigned_mut()
+                              .clone_from_slice(addr.as_bytes());
         self.txo.proxy_enabled = 1;
         self.txo.proxy_port = port;
         self

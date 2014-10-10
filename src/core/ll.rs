@@ -3,42 +3,42 @@
 use std::option::{Option};
 use libc::{c_int, c_uint, c_char, c_void};
 
-pub static TOX_FAERR_TOOLONG:      c_int = -1;
-pub static TOX_FAERR_NOMESSAGE:    c_int = -2;
-pub static TOX_FAERR_OWNKEY:       c_int = -3;
-pub static TOX_FAERR_ALREADYSENT:  c_int = -4;
-pub static TOX_FAERR_UNKNOWN:      c_int = -5;
-pub static TOX_FAERR_BADCHECKSUM:  c_int = -6;
-pub static TOX_FAERR_SETNEWNOSPAM: c_int = -7;
-pub static TOX_FAERR_NOMEM:        c_int = -8;
+pub const TOX_FAERR_TOOLONG:      c_int = -1;
+pub const TOX_FAERR_NOMESSAGE:    c_int = -2;
+pub const TOX_FAERR_OWNKEY:       c_int = -3;
+pub const TOX_FAERR_ALREADYSENT:  c_int = -4;
+pub const TOX_FAERR_UNKNOWN:      c_int = -5;
+pub const TOX_FAERR_BADCHECKSUM:  c_int = -6;
+pub const TOX_FAERR_SETNEWNOSPAM: c_int = -7;
+pub const TOX_FAERR_NOMEM:        c_int = -8;
 
-pub static TOX_USERSTATUS_NONE:    c_uint = 0;
-pub static TOX_USERSTATUS_AWAY:    c_uint = 1;
-pub static TOX_USERSTATUS_BUSY:    c_uint = 2;
-pub static TOX_USERSTATUS_INVALID: c_uint = 3;
+pub const TOX_USERSTATUS_NONE:    c_uint = 0;
+pub const TOX_USERSTATUS_AWAY:    c_uint = 1;
+pub const TOX_USERSTATUS_BUSY:    c_uint = 2;
+pub const TOX_USERSTATUS_INVALID: c_uint = 3;
 
 #[repr(C)]
 pub struct Tox;
 
-pub static TOX_CHAT_CHANGE_PEER_ADD:  c_uint = 0;
-pub static TOX_CHAT_CHANGE_PEER_DEL:  c_uint = 1;
-pub static TOX_CHAT_CHANGE_PEER_NAME: c_uint = 2;
+pub const TOX_CHAT_CHANGE_PEER_ADD:  c_uint = 0;
+pub const TOX_CHAT_CHANGE_PEER_DEL:  c_uint = 1;
+pub const TOX_CHAT_CHANGE_PEER_NAME: c_uint = 2;
 
-pub static TOX_FILECONTROL_ACCEPT:        c_uint = 0;
-pub static TOX_FILECONTROL_PAUSE:         c_uint = 1;
-pub static TOX_FILECONTROL_KILL:          c_uint = 2;
-pub static TOX_FILECONTROL_FINISHED:      c_uint = 3;
-pub static TOX_FILECONTROL_RESUME_BROKEN: c_uint = 4;
+pub const TOX_FILECONTROL_ACCEPT:        c_uint = 0;
+pub const TOX_FILECONTROL_PAUSE:         c_uint = 1;
+pub const TOX_FILECONTROL_KILL:          c_uint = 2;
+pub const TOX_FILECONTROL_FINISHED:      c_uint = 3;
+pub const TOX_FILECONTROL_RESUME_BROKEN: c_uint = 4;
 
-pub static TOX_AVATAR_FORMAT_NONE: c_uint = 0;
-pub static TOX_AVATAR_FORMAT_PNG:  c_uint = 1;
+pub const TOX_AVATAR_FORMAT_NONE: c_uint = 0;
+pub const TOX_AVATAR_FORMAT_PNG:  c_uint = 1;
 
 #[repr(C)]
 pub struct Tox_Options {
     pub ipv6enabled:   u8,
     pub udp_disabled:  u8,
     pub proxy_enabled: u8,
-    pub proxy_address: [u8, ..256u],
+    pub proxy_address: [c_char, ..256u],
     pub proxy_port:    u16,
 }
 

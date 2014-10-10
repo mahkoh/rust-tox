@@ -614,7 +614,7 @@ impl Backend {
         let res = unsafe {
             address.as_mut_vec().push(0);
             tox_bootstrap_from_address(self.raw, address.as_bytes().as_ptr() as *const _,
-                                       port.to_be(), public_key.raw.as_ptr())
+                                       port, public_key.raw.as_ptr())
         };
         match res {
             1 => Ok(()),
