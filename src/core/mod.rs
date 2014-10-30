@@ -278,7 +278,7 @@ impl ToxOptions {
     /// Use a proxy
     pub fn proxy(mut self, addr: &str, port: u16) -> ToxOptions {
         if addr.len() >= 256 {
-            fail!("proxy address is too long");
+            panic!("proxy address is too long");
         }
 
         self.txo.proxy_address.as_mut_slice()
