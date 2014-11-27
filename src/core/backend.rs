@@ -6,18 +6,18 @@ use std::raw::{Slice};
 use std::mem::{transmute};
 use std::c_vec::{CVec};
 use core::ll::*;
-use core::{Address, ClientId, Online, Offline, MAX_NAME_LENGTH,
-           UserStatusAway, UserStatusNone, UserStatusBusy,
-           ChatChangePeerAdd, ChatChangePeerDel, ChatChangePeerName, TransferType,
-           Sending, Receiving, ControlAccept, ControlKill, ControlPause,
-           ControlFinished, ControlResumeBroken, Faerr, FaerrToolong, FaerrNomessage,
-           FaerrOwnkey, FaerrAlreadysent, FaerrUnknown, FaerrBadchecksum,
-           FaerrSetnewnospam, FaerrNomem, Event, FriendRequest, FriendMessage,
-           FriendAction, NameChange, StatusMessage, UserStatus, UserStatusVar,
-           TypingChange, ReadReceipt, ConnectionStatus, ConnectionStatusVar, GroupInvite,
-           GroupMessage, GroupNamelistChange, FileSendRequest, FileControl, FileData,
-           AvatarInfo, AvatarNone, AvatarPNG, AvatarData, AvatarFormat,
-           AVATAR_MAX_DATA_LENGTH, Hash};
+use core::{Address, ClientId, Event, ConnectionStatus,
+           UserStatus, Faerr, TransferType, AvatarFormat,
+           MAX_NAME_LENGTH, AVATAR_MAX_DATA_LENGTH, Hash};
+use core::Event::*;
+use core::ConnectionStatus::*;
+use core::UserStatus::*;
+use core::ChatChange::*;
+use core::ControlType::*;
+use core::Faerr::*;
+use core::TransferType::*;
+use core::AvatarFormat::*;
+
 use libc::{c_void, c_uint};
 
 pub enum Control {
@@ -676,7 +676,7 @@ impl Backend {
 
             'inner: loop {
                 match self.control.try_recv() {
-                    Ok(Kill) => break 'outer,
+                    Ok(Control::Kill) => break 'outer,
                     Ok(ctrl) => self.control(ctrl),
                     Err(std::comm::Disconnected) => break 'outer,
                     _ => break 'inner,
@@ -690,113 +690,113 @@ impl Backend {
 
     fn control(&mut self, ctrl: Control) {
         match ctrl {
-            GetAddress(ret) =>
+            Control::GetAddress(ret) =>
                 ret.send(self.get_address()),
-            AddFriend(addr, msg, ret) =>
+            Control::AddFriend(addr, msg, ret) =>
                 ret.send(self.add_friend(addr, msg)),
-            AddFriendNorequest(id, ret) =>
+            Control::AddFriendNorequest(id, ret) =>
                 ret.send(self.add_friend_norequest(id)),
-            GetFriendNumber(id, ret) =>
+            Control::GetFriendNumber(id, ret) =>
                 ret.send(self.get_friend_number(id)),
-            GetClientId(friend, ret) =>
+            Control::GetClientId(friend, ret) =>
                 ret.send(self.get_client_id(friend)),
-            DelFriend(friend, ret) =>
+            Control::DelFriend(friend, ret) =>
                 ret.send(self.del_friend(friend)),
-            GetFriendConnectionStatus(friend, ret) =>
+            Control::GetFriendConnectionStatus(friend, ret) =>
                 ret.send(self.get_friend_connection_status(friend)),
-            FriendExists(friend, ret) =>
+            Control::FriendExists(friend, ret) =>
                 ret.send(self.friend_exists(friend)),
-            SendMessage(friend, msg, ret) =>
+            Control::SendMessage(friend, msg, ret) =>
                 ret.send(self.send_message(friend, msg)),
-            SendAction(friend, act, ret) =>
+            Control::SendAction(friend, act, ret) =>
                 ret.send(self.send_action(friend, act)),
-            SetName(name, ret) =>
+            Control::SetName(name, ret) =>
                 ret.send(self.set_name(name)),
-            GetSelfName(ret) =>
+            Control::GetSelfName(ret) =>
                 ret.send(self.get_self_name()),
-            GetName(friend, ret) =>
+            Control::GetName(friend, ret) =>
                 ret.send(self.get_name(friend)),
-            SetStatusMessage(msg, ret) =>
+            Control::SetStatusMessage(msg, ret) =>
                 ret.send(self.set_status_message(msg)),
-            SetUserStatus(status, ret) =>
+            Control::SetUserStatus(status, ret) =>
                 ret.send(self.set_user_status(status)),
-            GetStatusMessage(friend, ret) =>
+            Control::GetStatusMessage(friend, ret) =>
                 ret.send(self.get_status_message(friend)),
-            GetSelfStatusMessage(ret) =>
+            Control::GetSelfStatusMessage(ret) =>
                 ret.send(self.get_self_status_message()),
-            GetUserStatus(friend, ret) =>
+            Control::GetUserStatus(friend, ret) =>
                 ret.send(self.get_user_status(friend)),
-            GetSelfUserStatus(ret) =>
+            Control::GetSelfUserStatus(ret) =>
                 ret.send(self.get_self_user_status()),
-            GetLastOnline(friend, ret) =>
+            Control::GetLastOnline(friend, ret) =>
                 ret.send(self.get_last_online(friend)),
-            SetUserIsTyping(friend, is, ret) =>
+            Control::SetUserIsTyping(friend, is, ret) =>
                 ret.send(self.set_user_is_typing(friend, is)),
-            GetIsTyping(friend, ret) =>
+            Control::GetIsTyping(friend, ret) =>
                 ret.send(self.get_is_typing(friend)),
-//            SetSendsReceipts(friend, send) =>
+//            Control::SetSendsReceipts(friend, send) =>
 //                self.set_sends_receipts(friend, send),
-            CountFriendlist(ret) =>
+            Control::CountFriendlist(ret) =>
                 ret.send(self.count_friendlist()),
-            GetNumOnlineFriends(ret) =>
+            Control::GetNumOnlineFriends(ret) =>
                 ret.send(self.get_num_online_friends()),
-            GetFriendlist(ret) =>
+            Control::GetFriendlist(ret) =>
                 ret.send(self.get_friendlist()),
-            GetNospam(ret) =>
+            Control::GetNospam(ret) =>
                 ret.send(self.get_nospam()),
-            SetNospam(ns) =>
+            Control::SetNospam(ns) =>
                 self.set_nospam(ns),
-            AddGroupchat(ret) =>
+            Control::AddGroupchat(ret) =>
                 ret.send(self.add_groupchat()),
-            DelGroupchat(group, ret) =>
+            Control::DelGroupchat(group, ret) =>
                 ret.send(self.del_groupchat(group)),
-            GroupPeername(group, peer, ret) =>
+            Control::GroupPeername(group, peer, ret) =>
                 ret.send(self.group_peername(group, peer)),
-            InviteFriend(friend, group, ret) =>
+            Control::InviteFriend(friend, group, ret) =>
                 ret.send(self.invite_friend(friend, group)),
-            JoinGroupchat(friend, group, ret) =>
+            Control::JoinGroupchat(friend, group, ret) =>
                 ret.send(self.join_groupchat(friend, group)),
-            GroupMessageSend(group, msg, ret) =>
+            Control::GroupMessageSend(group, msg, ret) =>
                 ret.send(self.group_message_send(group, msg)),
-            GroupActionSend(group, action, ret) =>
+            Control::GroupActionSend(group, action, ret) =>
                 ret.send(self.group_action_send(group, action)),
-            GroupNumberPeers(group, ret) =>
+            Control::GroupNumberPeers(group, ret) =>
                 ret.send(self.group_number_peers(group)),
-            GroupGetNames(group, ret) =>
+            Control::GroupGetNames(group, ret) =>
                 ret.send(self.group_get_names(group)),
-            CountChatlist(ret) =>
+            Control::CountChatlist(ret) =>
                 ret.send(self.count_chatlist()),
-            GetChatlist(ret) =>
+            Control::GetChatlist(ret) =>
                 ret.send(self.get_chatlist()),
-            SetAvatar(format, data, ret) =>
+            Control::SetAvatar(format, data, ret) =>
                 ret.send(self.set_avatar(format, data)),
-            UnsetAvatar =>
+            Control::UnsetAvatar =>
                 self.unset_avatar(),
-            GetSelfAvatar(ret) =>
+            Control::GetSelfAvatar(ret) =>
                 ret.send(self.get_self_avatar()),
-            RequestAvatarInfo(friend, ret) =>
+            Control::RequestAvatarInfo(friend, ret) =>
                 ret.send(self.request_avatar_info(friend)),
-            RequestAvatarData(friend, ret) =>
+            Control::RequestAvatarData(friend, ret) =>
                 ret.send(self.request_avatar_data(friend)),
-            SendAvatarInfo(friend, ret) =>
+            Control::SendAvatarInfo(friend, ret) =>
                 ret.send(self.send_avatar_info(friend)),
-            NewFileSender(friend, size, file, ret) =>
+            Control::NewFileSender(friend, size, file, ret) =>
                 ret.send(self.new_file_sender(friend, size, file)),
-            FileSendControl(friend, ty, num, msg, data, ret) =>
+            Control::FileSendControl(friend, ty, num, msg, data, ret) =>
                 ret.send(self.file_send_control(friend, ty, num, msg, data)),
-            FileSendData(friend, num, data, ret) =>
+            Control::FileSendData(friend, num, data, ret) =>
                 ret.send(self.file_send_data(friend, num, data)),
-            FileDataSize(friend, ret) =>
+            Control::FileDataSize(friend, ret) =>
                 ret.send(self.file_data_size(friend)),
-            FileDataRemaining(friend, num, ty, ret) =>
+            Control::FileDataRemaining(friend, num, ty, ret) =>
                 ret.send(self.file_data_remaining(friend, num, ty)),
-            BootstrapFromAddress(addr, port, id, ret) =>
+            Control::BootstrapFromAddress(addr, port, id, ret) =>
                 ret.send(self.bootstrap_from_address(addr, port, id)),
-            Isconnected(ret) =>
+            Control::Isconnected(ret) =>
                 ret.send(self.is_connected()),
-            Save(ret) =>
+            Control::Save(ret) =>
                 ret.send(self.save()),
-            Load(data, ret) =>
+            Control::Load(data, ret) =>
                 ret.send(self.load(data)),
             _ => unreachable!(),
         }
