@@ -7,16 +7,11 @@ use std::mem::{transmute};
 use std::c_vec::{CVec};
 use core::ll::*;
 use core::{Address, ClientId, Event, ConnectionStatus,
-           UserStatus, Faerr, TransferType, AvatarFormat,
+           UserStatus, ChatChange, ControlType, Faerr, TransferType, AvatarFormat,
            MAX_NAME_LENGTH, AVATAR_MAX_DATA_LENGTH, Hash};
 use core::Event::*;
 use core::ConnectionStatus::*;
-use core::UserStatus::*;
-use core::ChatChange::*;
-use core::ControlType::*;
-use core::Faerr::*;
 use core::TransferType::*;
-use core::AvatarFormat::*;
 
 use libc::{c_void, c_uint};
 
@@ -103,16 +98,16 @@ impl Backend {
                            msg.as_bytes().as_ptr(), msg.len() as u16)
         };
         match res {
-            TOX_FAERR_TOOLONG => Err(FaerrToolong),
-            TOX_FAERR_NOMESSAGE => Err(FaerrNomessage),
-            TOX_FAERR_OWNKEY => Err(FaerrOwnkey),
-            TOX_FAERR_ALREADYSENT => Err(FaerrAlreadysent),
-            TOX_FAERR_UNKNOWN => Err(FaerrUnknown),
-            TOX_FAERR_BADCHECKSUM => Err(FaerrBadchecksum),
-            TOX_FAERR_SETNEWNOSPAM => Err(FaerrSetnewnospam),
-            TOX_FAERR_NOMEM => Err(FaerrNomem),
+            TOX_FAERR_TOOLONG => Err(Faerr::Toolong),
+            TOX_FAERR_NOMESSAGE => Err(Faerr::Nomessage),
+            TOX_FAERR_OWNKEY => Err(Faerr::Ownkey),
+            TOX_FAERR_ALREADYSENT => Err(Faerr::Alreadysent),
+            TOX_FAERR_UNKNOWN => Err(Faerr::Unknown),
+            TOX_FAERR_BADCHECKSUM => Err(Faerr::Badchecksum),
+            TOX_FAERR_SETNEWNOSPAM => Err(Faerr::Setnewnospam),
+            TOX_FAERR_NOMEM => Err(Faerr::Nomem),
             n if n >= 0 => Ok(n),
-            _ => Err(FaerrUnknown),
+            _ => Err(Faerr::Unknown),
         }
     }
 
@@ -296,18 +291,18 @@ impl Backend {
 
     fn get_user_status(&mut self, friendnumber: i32) -> Result<UserStatus, ()> {
         match unsafe { tox_get_user_status(&*self.raw, friendnumber) as u32 } {
-            TOX_USERSTATUS_AWAY => Ok(UserStatusAway),
-            TOX_USERSTATUS_NONE => Ok(UserStatusNone),
-            TOX_USERSTATUS_BUSY => Ok(UserStatusBusy),
+            TOX_USERSTATUS_AWAY => Ok(UserStatus::Away),
+            TOX_USERSTATUS_NONE => Ok(UserStatus::None),
+            TOX_USERSTATUS_BUSY => Ok(UserStatus::Busy),
             _ => Err(())
         }
     }
 
     fn get_self_user_status(&mut self) -> Result<UserStatus, ()> {
         match unsafe { tox_get_self_user_status(&*self.raw) as u32 } {
-            TOX_USERSTATUS_AWAY => Ok(UserStatusAway),
-            TOX_USERSTATUS_NONE => Ok(UserStatusNone),
-            TOX_USERSTATUS_BUSY => Ok(UserStatusBusy),
+            TOX_USERSTATUS_AWAY => Ok(UserStatus::Away),
+            TOX_USERSTATUS_NONE => Ok(UserStatus::None),
+            TOX_USERSTATUS_BUSY => Ok(UserStatus::Busy),
             _ => Err(())
         }
     }
@@ -515,8 +510,8 @@ impl Backend {
         unsafe { data.set_len(length as uint); }
         data.shrink_to_fit();
         let format = match format as c_uint {
-            TOX_AVATAR_FORMAT_NONE => AvatarNone,
-            TOX_AVATAR_FORMAT_PNG => AvatarPNG,
+            TOX_AVATAR_FORMAT_NONE => AvatarFormat::None,
+            TOX_AVATAR_FORMAT_PNG => AvatarFormat::PNG,
             _ => return Err(()),
         };
         Ok((format, data, hash))
@@ -900,9 +895,9 @@ extern fn on_user_status(_: *mut Tox, friendnumber: i32, status: u8,
                          internal: *mut c_void) {
     let internal = get_int!(internal);
     let status = match status as u32 {
-        TOX_USERSTATUS_NONE => UserStatusNone,
-        TOX_USERSTATUS_AWAY => UserStatusAway,
-        TOX_USERSTATUS_BUSY => UserStatusBusy,
+        TOX_USERSTATUS_NONE => UserStatus::None,
+        TOX_USERSTATUS_AWAY => UserStatus::Away,
+        TOX_USERSTATUS_BUSY => UserStatus::Busy,
         _ => return,
     };
     send_or_stop!(internal, UserStatusVar(friendnumber, status));
@@ -957,9 +952,9 @@ extern fn on_group_namelist_change(_: *mut Tox, groupnumber: i32, peernumber: i3
                                    change: u8, internal: *mut c_void) {
     let internal = get_int!(internal);
     let change = match change as u32 {
-        TOX_CHAT_CHANGE_PEER_ADD => ChatChangePeerAdd,
-        TOX_CHAT_CHANGE_PEER_DEL => ChatChangePeerDel,
-        TOX_CHAT_CHANGE_PEER_NAME => ChatChangePeerName,
+        TOX_CHAT_CHANGE_PEER_ADD => ChatChange::PeerAdd,
+        TOX_CHAT_CHANGE_PEER_DEL => ChatChange::PeerDel,
+        TOX_CHAT_CHANGE_PEER_NAME => ChatChange::PeerName,
         _ => return,
     };
     send_or_stop!(internal, GroupNamelistChange(groupnumber, peernumber, change));
@@ -985,11 +980,11 @@ extern fn on_file_control(_: *mut Tox, friendnumber: i32, receive_send: u8,
                           internal: *mut c_void) {
     let internal = get_int!(internal);
     let ty = match control_type as u32 {
-        TOX_FILECONTROL_ACCEPT        => ControlAccept,
-        TOX_FILECONTROL_PAUSE         => ControlPause,
-        TOX_FILECONTROL_KILL          => ControlKill,
-        TOX_FILECONTROL_FINISHED      => ControlFinished,
-        TOX_FILECONTROL_RESUME_BROKEN => ControlResumeBroken,
+        TOX_FILECONTROL_ACCEPT        => ControlType::Accept,
+        TOX_FILECONTROL_PAUSE         => ControlType::Pause,
+        TOX_FILECONTROL_KILL          => ControlType::Kill,
+        TOX_FILECONTROL_FINISHED      => ControlType::Finished,
+        TOX_FILECONTROL_RESUME_BROKEN => ControlType::ResumeBroken,
         _ => return,
     };
     let tt = match receive_send {
@@ -1012,8 +1007,8 @@ extern fn on_avatar_info(_: *mut Tox, friendnumber: i32, format: u8, hash: *mut 
                          internal: *mut c_void) {
     let internal = get_int!(internal);
     let format = match format as c_uint {
-        TOX_AVATAR_FORMAT_NONE => AvatarNone,
-        TOX_AVATAR_FORMAT_PNG  => AvatarPNG,
+        TOX_AVATAR_FORMAT_NONE => AvatarFormat::None,
+        TOX_AVATAR_FORMAT_PNG  => AvatarFormat::PNG,
         _ => return,
     };
     let hash = unsafe { ptr::read(hash as *const u8 as *const _) };
@@ -1024,8 +1019,8 @@ extern fn on_avatar_data(_: *mut Tox, friendnumber: i32, format: u8, hash: *mut 
                          data: *mut u8, datalen: u32, internal: *mut c_void) {
     let internal = get_int!(internal);
     let format = match format as c_uint {
-        TOX_AVATAR_FORMAT_NONE => AvatarNone,
-        TOX_AVATAR_FORMAT_PNG  => AvatarPNG,
+        TOX_AVATAR_FORMAT_NONE => AvatarFormat::None,
+        TOX_AVATAR_FORMAT_PNG  => AvatarFormat::PNG,
         _ => return,
     };
     let hash = unsafe { ptr::read(hash as *const u8 as *const _) };
