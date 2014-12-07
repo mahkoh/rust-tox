@@ -1,7 +1,43 @@
+/*!
+    The core rust-tox module.
+
+    # Example (a simple echo bot)
+
+    ~~~{.rust}
+    #![feature(globs)]
+    extern crate tox;
+
+    use tox::core::*;
+
+    fn main() {
+        let tox = Tox::new(ToxOptions::new()).unwrap();
+        let bootkey = box from_str("951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F").unwrap();
+        tox.bootstrap_from_address("192.254.75.98".to_string(), 33445, bootkey).unwrap();
+
+        println!("Bot key: {}", tox.get_address());
+
+        loop {
+            for ev in tox.events() {
+                match ev {
+                    FriendRequest(fnum, _) => {
+                        tox.add_friend_norequest(fnum).unwrap();
+                    },
+                    FriendMessage(fnum, msg) => {
+                        tox.send_message(fnum, msg).unwrap();
+                    },
+                    _ => (),
+                }
+            }
+
+            std::io::timer::sleep(std::time::Duration::milliseconds(50));
+        }
+    }
+    ~~~
+*/
 use std::{fmt, mem};
 use std::str::{FromStr};
 use rust_core::slice::{MutableIntSlice};
-
+pub use self::Event::*;
 
 mod backend;
 mod ll;
@@ -17,31 +53,51 @@ pub const HASH_LENGTH:              uint = 32u;
 #[deriving(Clone, Eq, PartialEq)]
 #[repr(u8)]
 pub enum AvatarFormat {
-    AvatarNone = ll::TOX_AVATAR_FORMAT_NONE as u8,
-    AvatarPNG = ll::TOX_AVATAR_FORMAT_PNG as u8,
+    None = ll::TOX_AVATAR_FORMAT_NONE as u8,
+    PNG = ll::TOX_AVATAR_FORMAT_PNG as u8,
 }
 
+/// Tox events enum
 #[deriving(Clone)]
 pub enum Event {
+    /// The first value is the client id, the second is the friend request message
     FriendRequest(Box<ClientId>, String),
+    /// `(fnum, msg)` where `fnum` is the friend number and `msg` is the received message
     FriendMessage(i32, String),
+    /// `(fnum, msg)` where `fnum` is the friend number and `msg` is the action message
     FriendAction(i32, String),
+    /// `(fnum, name)` where `fnum` is the friend number and `name` is the new friend name
     NameChange(i32, String),
+    /// `(fnum, status)` where `fnum` is the friend number and `status` is the status message
     StatusMessage(i32, String),
+    /// `(fnum, usrst)` where `fnum` is the friend number and `usrst` is the friend status
     UserStatusVar(i32, UserStatus),
+    /// `(fnum, is_typing)`. `true` value of is_typing means that friend is typing. `fnum` is the friend number
     TypingChange(i32, bool),
+    // ?
     ReadReceipt(i32, u32),
+    /// `(fnum, ConnectionStatus)`. `fnum` is the friend number
     ConnectionStatusVar(i32, ConnectionStatus),
+    /// `(fnum, data)` where `data` is special data what needs
+    /// to be passed to Tox::join_group method, `fnum` is the friend number
     GroupInvite(i32, Vec<u8>),
+    /// `(gnum, pnum, msg)` where `gnum` is the group number, `pnum` is the peer number and `msg` is the message
     GroupMessage(i32, i32, String),
+    /// `(gnum, pnum, ChatChange)`
     GroupNamelistChange(i32, i32, ChatChange),
+    /// `(fnum, fid, fisize, finame)`
     FileSendRequest(i32, u8, u64, Vec<u8>),
+    /// `(fnum, TranserType, fid, ControlType, data)`
     FileControl(i32, TransferType, u8, ControlType, Vec<u8>),
+    /// `(fnum, fid, data)`
     FileData(i32, u8, Vec<u8>),
+    /// `(fnum, AvatarFormat, Hash)`
     AvatarInfo(i32, AvatarFormat, Hash),
+    /// `(fnum, AvatarFormat, Hash, data)`
     AvatarData(i32, AvatarFormat, Hash, Vec<u8>),
 }
 
+/// A Tox address consist of `ClientId`, nospam and checksum
 #[repr(C)]
 pub struct Address {
     id: ClientId,
@@ -117,7 +173,7 @@ impl FromStr for Address {
     }
 }
 
-pub fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
+fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
     if s.len() != 2*buf.len() {
         return Err(());
     }
@@ -134,6 +190,7 @@ pub fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
     return Ok(());
 }
 
+/// `ClientId` is the main part of tox `Address`. Other two are nospam and checksum.
 #[repr(C)]
 pub struct ClientId {
     pub raw: [u8, ..ID_CLIENT_SIZE],
@@ -169,11 +226,13 @@ impl FromStr for ClientId {
     }
 }
 
+/// Locally-calculated cryptographic hash of the avatar data
+#[deriving(Clone, PartialEq, Eq)]
 pub struct Hash {
     pub hash: [u8, ..HASH_LENGTH]
 }
 
-impl Clone for Hash {
+/*impl Clone for Hash {
     fn clone(&self) -> Hash {
         Hash { hash: self.hash }
     }
@@ -186,6 +245,19 @@ impl PartialEq for Hash {
 }
 
 impl Eq for Hash { }
+*/
+impl Hash {
+    pub fn new(data: &[u8]) -> Result<Hash, ()> {
+        let mut hash: Hash = unsafe { mem::uninitialized() };
+        let res = unsafe {
+            ll::tox_hash(hash.hash.as_mut_ptr(), data.as_ptr(), data.len() as u32)
+        };
+        match res {
+            0 => Ok(hash),
+            _ => Err(()),
+        }    
+    }
+}
 
 #[deriving(Clone, PartialEq, Eq)]
 pub enum ConnectionStatus {
@@ -196,40 +268,41 @@ pub enum ConnectionStatus {
 #[repr(u32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum UserStatus {
-    UserStatusNone = ll::TOX_USERSTATUS_NONE,
-    UserStatusAway = ll::TOX_USERSTATUS_AWAY,
-    UserStatusBusy = ll::TOX_USERSTATUS_BUSY,
+    None = ll::TOX_USERSTATUS_NONE,
+    Away = ll::TOX_USERSTATUS_AWAY,
+    Busy = ll::TOX_USERSTATUS_BUSY,
 }
 
 #[repr(u32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum ChatChange {
-    ChatChangePeerAdd = ll::TOX_CHAT_CHANGE_PEER_ADD,
-    ChatChangePeerDel = ll::TOX_CHAT_CHANGE_PEER_DEL,
-    ChatChangePeerName = ll::TOX_CHAT_CHANGE_PEER_NAME,
+    PeerAdd = ll::TOX_CHAT_CHANGE_PEER_ADD,
+    PeerDel = ll::TOX_CHAT_CHANGE_PEER_DEL,
+    PeerName = ll::TOX_CHAT_CHANGE_PEER_NAME,
 }
 
 #[repr(u32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum ControlType {
-    ControlAccept = ll::TOX_FILECONTROL_ACCEPT,
-    ControlPause = ll::TOX_FILECONTROL_PAUSE,
-    ControlKill = ll::TOX_FILECONTROL_KILL,
-    ControlFinished = ll::TOX_FILECONTROL_FINISHED,
-    ControlResumeBroken = ll::TOX_FILECONTROL_RESUME_BROKEN,
+    Accept = ll::TOX_FILECONTROL_ACCEPT,
+    Pause = ll::TOX_FILECONTROL_PAUSE,
+    Kill = ll::TOX_FILECONTROL_KILL,
+    Finished = ll::TOX_FILECONTROL_FINISHED,
+    ResumeBroken = ll::TOX_FILECONTROL_RESUME_BROKEN,
 }
 
+/// Faerr - Friend Add Error
 #[repr(i32)]
 #[deriving(Clone, PartialEq, Eq)]
 pub enum Faerr {
-    FaerrToolong = ll::TOX_FAERR_TOOLONG,
-    FaerrNomessage = ll::TOX_FAERR_NOMESSAGE,
-    FaerrOwnkey = ll::TOX_FAERR_OWNKEY,
-    FaerrAlreadysent = ll::TOX_FAERR_ALREADYSENT,
-    FaerrUnknown = ll::TOX_FAERR_UNKNOWN,
-    FaerrBadchecksum = ll::TOX_FAERR_BADCHECKSUM,
-    FaerrSetnewnospam = ll::TOX_FAERR_SETNEWNOSPAM,
-    FaerrNomem = ll::TOX_FAERR_NOMEM,
+    Toolong = ll::TOX_FAERR_TOOLONG,
+    Nomessage = ll::TOX_FAERR_NOMESSAGE,
+    Ownkey = ll::TOX_FAERR_OWNKEY,
+    Alreadysent = ll::TOX_FAERR_ALREADYSENT,
+    Unknown = ll::TOX_FAERR_UNKNOWN,
+    Badchecksum = ll::TOX_FAERR_BADCHECKSUM,
+    Setnewnospam = ll::TOX_FAERR_SETNEWNOSPAM,
+    Nomem = ll::TOX_FAERR_NOMEM,
 }
 
 #[deriving(Clone, PartialEq, Eq)]
@@ -239,7 +312,7 @@ pub enum TransferType {
 }
 
 
-/// A `Tox_Option` struct wrapper
+/// ToxOptions provides options that tox will be initalized with.
 ///
 /// Usage:
 /// ```
@@ -291,6 +364,7 @@ impl ToxOptions {
     }
 }
 
+/// The main tox struct. All the control goes here.
 pub struct Tox {
     pub events: Receiver<Event>,
     control: SyncSender<backend::Control>,
@@ -329,94 +403,95 @@ impl Drop for Tox {
 }
 
 impl Tox {
+    /// Get self address
     pub fn get_address(&self) -> Address {
         forward!(self, backend::Control::GetAddress, ->)
     }
-
+    /// Add a friend and send friend request
     pub fn add_friend(&self, address: Box<Address>, msg: String) -> Result<i32, Faerr> {
         forward!(self, backend::Control::AddFriend, (address, msg), ->)
     }
-
+    /// Add a friend without sending friend request. Beware, friend will appear online only if he added you too
     pub fn add_friend_norequest(&self, client_id: Box<ClientId>) -> Result<i32, ()> {
         forward!(self, backend::Control::AddFriendNorequest, (client_id), ->)
     }
-
+    /// Get friend number associated with given ClientId
     pub fn get_friend_number(&self, client_id: Box<ClientId>) -> Result<i32, ()> {
         forward!(self, backend::Control::GetFriendNumber, (client_id), ->)
     }
-
+    /// Get ClientId of the friend with given friend number
     pub fn get_client_id(&self, friendnumber: i32) -> Result<Box<ClientId>, ()> {
         forward!(self, backend::Control::GetClientId, (friendnumber), ->)
     }
-
+    /// Remove the friend with given friend number
     pub fn del_friend(&self, friendnumber: i32) -> Result<(),()> {
         forward!(self, backend::Control::DelFriend, (friendnumber), ->)
     }
-
+    /// Get the connection status of the friend
     pub fn get_friend_connection_status(
             &self,
             friendnumber: i32) -> Result<ConnectionStatus, ()> {
         forward!(self, backend::Control::GetFriendConnectionStatus, (friendnumber), ->)
     }
-
+    /// Returns `true` if friend with given friend number exists. Otherwise, returns `false`
     pub fn friend_exists(&self, friendnumber: i32) -> bool {
         forward!(self, backend::Control::FriendExists, (friendnumber), ->)
     }
-
+    /// Send a message to the friend
     pub fn send_message(&self, friendnumber: i32,
                         msg: String) -> Result<u32, ()> {
         forward!(self, backend::Control::SendMessage, (friendnumber, msg), ->)
     }
-
+    /// Send an action message to the friend
     pub fn send_action(&self, friendnumber: i32, action: String) -> Result<u32, ()> {
         forward!(self, backend::Control::SendAction, (friendnumber, action), ->)
     }
-
+    /// Set self nickname
     pub fn set_name(&self, name: String) -> Result<(),()> {
         forward!(self, backend::Control::SetName, (name), ->)
     }
-
+    /// Returns the self nickname
     pub fn get_self_name(&self) -> Result<String, ()> {
         forward!(self, backend::Control::GetSelfName, ->)
     }
-
+    /// Get the nickname of the friend
     pub fn get_name(&self, friendnumber: i32) -> Result<String, ()> {
         forward!(self, backend::Control::GetName, (friendnumber), ->)
     }
-
+    /// Set self status message
     pub fn set_status_message(&self, status: String) -> Result<(),()> {
         forward!(self, backend::Control::SetStatusMessage, (status), ->)
     }
-
+    /// Set self status (`None`, `Away` or `Busy`)
     pub fn set_user_status(&self, userstatus: UserStatus) -> Result<(), ()> {
         forward!(self, backend::Control::SetUserStatus, (userstatus), ->)
     }
-
+    /// Get the status message of the friend
     pub fn get_status_message(&self, friendnumber: i32) -> Result<String, ()> {
         forward!(self, backend::Control::GetStatusMessage, (friendnumber), ->)
     }
-
+    /// Get self status message
     pub fn get_self_status_message(&self) -> Result<String, ()> {
         forward!(self, backend::Control::GetSelfStatusMessage, ->)
     }
-
+    /// Get status of the friend
     pub fn get_user_status(&self, friendnumber: i32) -> Result<UserStatus, ()> {
         forward!(self, backend::Control::GetUserStatus, (friendnumber), ->)
     }
-
+    /// Get self status
     pub fn get_self_user_status(&self) -> Result<UserStatus, ()> {
         forward!(self, backend::Control::GetSelfUserStatus, ->)
     }
-
+    /// Return timestamp of last time the friend was seen online, or 0 if never seen
     pub fn get_last_online(&self, friendnumber: i32) -> Result<u64, ()> {
         forward!(self, backend::Control::GetLastOnline, (friendnumber), ->)
     }
-
+    /// Set typing status for the given friend.You are responsible for turning it on or off
     pub fn set_user_is_typing(&self, friendnumber: i32,
                               is_typing: bool) -> Result<(), ()> {
         forward!(self, backend::Control::SetUserIsTyping, (friendnumber, is_typing), ->)
     }
-
+    /// Get typing status of the given friend
     pub fn get_is_typing(&self, friendnumber: i32) -> bool {
         forward!(self, backend::Control::GetIsTyping, (friendnumber), ->)
     }
@@ -424,70 +499,70 @@ impl Tox {
     pub fn set_sends_receipts(&self, friendnumber: i32, yesno: bool) {
         forward!(self, backend::Control::SetSendsReceipts, (friendnumber, yesno))
     }
-
+    /// Returns the number of friends
     pub fn count_friendlist(&self) -> u32 {
         forward!(self, backend::Control::CountFriendlist, ->)
     }
-
+    /// Returns the number of chats
     pub fn count_chatlist(&self) -> u32 {
         forward!(self, backend::Control::CountChatlist, ->)
     }
-
+    /// Get the number of online friends
     pub fn get_num_online_friends(&self) -> u32 {
         forward!(self, backend::Control::GetNumOnlineFriends, ->)
     }
-
+    /// Get the Vec of valid friend IDs
     pub fn get_friendlist(&self) -> Vec<i32> {
         forward!(self, backend::Control::GetFriendlist, ->)
     }
-
+    /// Get self nospam
     pub fn get_nospam(&self) -> [u8, ..4] {
         forward!(self, backend::Control::GetNospam, ->)
     }
-
+    /// Set self nospam
     pub fn set_nospam(&self, nospam: [u8, ..4]) {
         forward!(self, backend::Control::SetNospam, (nospam))
     }
-
+    /// Create a new groupchat, returns groupchat number
     pub fn add_groupchat(&self) -> Result<i32, ()> {
         forward!(self, backend::Control::AddGroupchat, ->)
     }
-
+    /// Leave the groupchat
     pub fn del_groupchat(&self, groupnumber: i32) -> Result<(),()> {
         forward!(self, backend::Control::DelGroupchat, (groupnumber), ->)
     }
-
+    /// Returns the name of peer with given peer number in the groupchat
     pub fn group_peername(&self, groupnumber: i32,
                           peernumber: i32) -> Result<String, ()> {
         forward!(self, backend::Control::GroupPeername, (groupnumber, peernumber), ->)
     }
-
+    /// Invite the friend to the groupchat
     pub fn invite_friend(&self, friendnumber: i32, groupnumber: i32) -> Result<(), ()> {
         forward!(self, backend::Control::InviteFriend, (friendnumber, groupnumber), ->)
     }
-
+    /// Join a groupchat using `data` obtained by `GroupInvite` event
     pub fn join_groupchat(&self, friendnumber: i32, data: Vec<u8>) -> Result<i32, ()> {
         forward!(self, backend::Control::JoinGroupchat, (friendnumber, data), ->)
     }
-
+    /// Send a message to the groupchat
     pub fn group_message_send(&self, groupnumber: i32,
                               message: String) -> Result<(), ()> {
         forward!(self, backend::Control::GroupMessageSend, (groupnumber, message), ->)
     }
-
+    /// Send an action message to the groupchat
     pub fn group_action_send(&self, groupnumber: i32, action: String) -> Result<(), ()> {
         forward!(self, backend::Control::GroupActionSend, (groupnumber, action), ->)
     }
-
+    /// Returns number of peers in the groupchat
     pub fn group_number_peers(&self, groupnumber: i32) -> Result<i32, ()> {
         forward!(self, backend::Control::GroupNumberPeers, (groupnumber), ->)
     }
-
+    /// Returns list of all peer names in the groupchat
     pub fn group_get_names(&self,
                            groupnumber: i32) -> Result<Vec<Option<String>>, ()> {
         forward!(self, backend::Control::GroupGetNames, (groupnumber), ->)
     }
-
+    /// Returns the Vec of all valid group IDs
     pub fn get_chatlist(&self) -> Vec<i32> {
         forward!(self, backend::Control::GetChatlist, ->)
     }
@@ -541,16 +616,16 @@ impl Tox {
                                send_receive: TransferType) -> Result<u64, ()> {
         forward!(self, backend::Control::FileDataRemaining, (friendnumber, filenumber, send_receive), ->)
     }
-
+    /// Bootstrap from the given (address, port, ClientId)
     pub fn bootstrap_from_address(&self, address: String, port: u16,
                                   public_key: Box<ClientId>) -> Result<(), ()> {
         forward!(self, backend::Control::BootstrapFromAddress, (address, port, public_key), ->)
     }
-
+    /// Returns `true` if connected to DHT. Otherwise, returns `false`
     pub fn is_connected(&self) -> bool {
         forward!(self, backend::Control::Isconnected, ->)
     }
-
+    /// Create a new tox instance
     pub fn new(mut opts: ToxOptions) -> Option<Tox> {
         let (ctrl, events) = match backend::Backend::new(&mut opts.txo) {
             Some(x) => x,
@@ -561,20 +636,21 @@ impl Tox {
             control: ctrl,
         })
     }
-
+    /// Returns a tox data that should be saved in the tox file
     pub fn save(&self) -> Vec<u8> {
         forward!(self, backend::Control::Save, ->)
     }
-
+    /// Load instance data from Vec
     pub fn load(&self, data: Vec<u8>) -> Result<(), ()> {
         forward!(self, backend::Control::Load, (data), ->)
     }
-
+    /// Return an events iterator
     pub fn events<'a>(&'a self) -> EventIter<'a> {
         EventIter { events: &self.events }
     }
 }
 
+/// Tox events iterator
 pub struct EventIter<'a> {
     events: &'a Receiver<Event>,
 }
@@ -585,16 +661,5 @@ impl<'a> Iterator<Event> for EventIter<'a> {
             Ok(t) => Some(t),
             _ => None,
         }
-    }
-}
-
-pub fn hash(data: &[u8]) -> Result<Hash, ()> {
-    let mut hash: Hash = unsafe { mem::uninitialized() };
-    let res = unsafe {
-        ll::tox_hash(hash.hash.as_mut_ptr(), data.as_ptr(), data.len() as u32)
-    };
-    match res {
-        0 => Ok(hash),
-        _ => Err(()),
     }
 }
