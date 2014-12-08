@@ -255,7 +255,7 @@ impl Hash {
         match res {
             0 => Ok(hash),
             _ => Err(()),
-        }    
+        }
     }
 }
 
