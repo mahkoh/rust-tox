@@ -8,7 +8,7 @@ use std::c_vec::{CVec};
 use core::ll::*;
 use core::{Address, ClientId, Event, ConnectionStatus,
            UserStatus, ChatChange, ControlType, Faerr, TransferType, AvatarFormat,
-           MAX_NAME_LENGTH, AVATAR_MAX_DATA_LENGTH, Hash};
+           MAX_NAME_LENGTH, AVATAR_MAX_DATA_LENGTH, Hash, GroupchatType};
 use core::Event::*;
 use core::ConnectionStatus::*;
 use core::TransferType::*;
@@ -925,13 +925,18 @@ extern fn on_connection_status(_: *mut Tox, friendnumber: i32, status: u8,
     send_or_stop!(internal, ConnectionStatusVar(friendnumber, status));
 }
 
-extern fn on_group_invite(_: *mut Tox, friendnumber: i32, data: *const u8, length: u16,
-                          internal: *mut c_void) {
+extern fn on_group_invite(_: *mut Tox, friendnumber: i32, ty: u8, data: *const u8,
+                          length: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
     let data = unsafe {
         CVec::new(data as *mut _, length as uint).as_mut_slice().to_vec()
     };
-    send_or_stop!(internal, GroupInvite(friendnumber, data));
+    let ty = match ty as c_uint {
+        TOX_GROUPCHAT_TYPE_TEXT => GroupchatType::Text,
+        TOX_GROUPCHAT_TYPE_AV => GroupchatType::Av,
+        _ => return,
+    };
+    send_or_stop!(internal, GroupInvite(friendnumber, ty, data));
 }
 
 extern fn on_group_message(_: *mut Tox, groupnumber: i32, frindgroupnumber: i32,

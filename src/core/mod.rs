@@ -1,39 +1,40 @@
-/*!
-    The core rust-tox module.
+//! The core rust-tox module.
+//! 
+//! # Example (a simple echo bot)
+//! 
+//! ~~~{.rust}
+//! #![feature(globs)]
+//! extern crate tox;
+//! 
+//! use tox::core::*;
+//! 
+//! fn main() {
+//!     let tox = Tox::new(ToxOptions::new()).unwrap();
+//!     let bootkey = box from_str("951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F").unwrap();
+//!     tox.bootstrap_from_address("192.254.75.98".to_string(), 33445, bootkey).unwrap();
+//! 
+//!     println!("Bot key: {}", tox.get_address());
+//! 
+//!     loop {
+//!         for ev in tox.events() {
+//!             match ev {
+//!                 FriendRequest(fnum, _) => {
+//!                     tox.add_friend_norequest(fnum).unwrap();
+//!                 },
+//!                 FriendMessage(fnum, msg) => {
+//!                     tox.send_message(fnum, msg).unwrap();
+//!                 },
+//!                 _ => (),
+//!             }
+//!         }
+//! 
+//!         std::io::timer::sleep(std::time::Duration::milliseconds(50));
+//!     }
+//! }
+//! ~~~
 
-    # Example (a simple echo bot)
+// TODO: Wrap unwrapped core functions
 
-    ~~~{.rust}
-    #![feature(globs)]
-    extern crate tox;
-
-    use tox::core::*;
-
-    fn main() {
-        let tox = Tox::new(ToxOptions::new()).unwrap();
-        let bootkey = box from_str("951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F").unwrap();
-        tox.bootstrap_from_address("192.254.75.98".to_string(), 33445, bootkey).unwrap();
-
-        println!("Bot key: {}", tox.get_address());
-
-        loop {
-            for ev in tox.events() {
-                match ev {
-                    FriendRequest(fnum, _) => {
-                        tox.add_friend_norequest(fnum).unwrap();
-                    },
-                    FriendMessage(fnum, msg) => {
-                        tox.send_message(fnum, msg).unwrap();
-                    },
-                    _ => (),
-                }
-            }
-
-            std::io::timer::sleep(std::time::Duration::milliseconds(50));
-        }
-    }
-    ~~~
-*/
 use std::{fmt, mem};
 use std::str::{FromStr};
 use rust_core::slice::{MutableIntSlice};
@@ -57,6 +58,13 @@ pub enum AvatarFormat {
     PNG = ll::TOX_AVATAR_FORMAT_PNG as u8,
 }
 
+#[deriving(Clone, Eq, PartialEq)]
+#[repr(u8)]
+pub enum GroupchatType {
+    Text = ll::TOX_GROUPCHAT_TYPE_TEXT as u8,
+    Av = ll::TOX_GROUPCHAT_TYPE_AV as u8,
+}
+
 /// Tox events enum
 #[deriving(Clone)]
 pub enum Event {
@@ -68,20 +76,24 @@ pub enum Event {
     FriendAction(i32, String),
     /// `(fnum, name)` where `fnum` is the friend number and `name` is the new friend name
     NameChange(i32, String),
-    /// `(fnum, status)` where `fnum` is the friend number and `status` is the status message
+    /// `(fnum, status)` where `fnum` is the friend number and `status` is the status
+    /// message
     StatusMessage(i32, String),
     /// `(fnum, usrst)` where `fnum` is the friend number and `usrst` is the friend status
     UserStatusVar(i32, UserStatus),
-    /// `(fnum, is_typing)`. `true` value of is_typing means that friend is typing. `fnum` is the friend number
+    /// `(fnum, is_typing)`. `true` value of is_typing means that friend is typing. `fnum`
+    /// is the friend number
     TypingChange(i32, bool),
     // ?
     ReadReceipt(i32, u32),
     /// `(fnum, ConnectionStatus)`. `fnum` is the friend number
     ConnectionStatusVar(i32, ConnectionStatus),
-    /// `(fnum, data)` where `data` is special data what needs
-    /// to be passed to Tox::join_group method, `fnum` is the friend number
-    GroupInvite(i32, Vec<u8>),
-    /// `(gnum, pnum, msg)` where `gnum` is the group number, `pnum` is the peer number and `msg` is the message
+    /// `(fnum, ty, data)` where `data` is special data what needs
+    /// to be passed to Tox::join_group method, `fnum` is the friend number, and `ty` is
+    /// the type of the group.
+    GroupInvite(i32, GroupchatType, Vec<u8>),
+    /// `(gnum, pnum, msg)` where `gnum` is the group number, `pnum` is the peer number
+    /// and `msg` is the message
     GroupMessage(i32, i32, String),
     /// `(gnum, pnum, ChatChange)`
     GroupNamelistChange(i32, i32, ChatChange),
@@ -232,20 +244,6 @@ pub struct Hash {
     pub hash: [u8, ..HASH_LENGTH]
 }
 
-/*impl Clone for Hash {
-    fn clone(&self) -> Hash {
-        Hash { hash: self.hash }
-    }
-}
-
-impl PartialEq for Hash {
-    fn eq(&self, other: &Hash) -> bool {
-        self.hash.as_slice() == other.hash.as_slice()
-    }
-}
-
-impl Eq for Hash { }
-*/
 impl Hash {
     pub fn new(data: &[u8]) -> Result<Hash, ()> {
         let mut hash: Hash = unsafe { mem::uninitialized() };
@@ -407,90 +405,114 @@ impl Tox {
     pub fn get_address(&self) -> Address {
         forward!(self, backend::Control::GetAddress, ->)
     }
+
     /// Add a friend and send friend request
     pub fn add_friend(&self, address: Box<Address>, msg: String) -> Result<i32, Faerr> {
         forward!(self, backend::Control::AddFriend, (address, msg), ->)
     }
-    /// Add a friend without sending friend request. Beware, friend will appear online only if he added you too
+
+    /// Add a friend without sending friend request. Beware, friend will appear online
+    /// only if he added you too
     pub fn add_friend_norequest(&self, client_id: Box<ClientId>) -> Result<i32, ()> {
         forward!(self, backend::Control::AddFriendNorequest, (client_id), ->)
     }
+
     /// Get friend number associated with given ClientId
     pub fn get_friend_number(&self, client_id: Box<ClientId>) -> Result<i32, ()> {
         forward!(self, backend::Control::GetFriendNumber, (client_id), ->)
     }
+
     /// Get ClientId of the friend with given friend number
     pub fn get_client_id(&self, friendnumber: i32) -> Result<Box<ClientId>, ()> {
         forward!(self, backend::Control::GetClientId, (friendnumber), ->)
     }
+
     /// Remove the friend with given friend number
     pub fn del_friend(&self, friendnumber: i32) -> Result<(),()> {
         forward!(self, backend::Control::DelFriend, (friendnumber), ->)
     }
+
     /// Get the connection status of the friend
     pub fn get_friend_connection_status(
             &self,
             friendnumber: i32) -> Result<ConnectionStatus, ()> {
         forward!(self, backend::Control::GetFriendConnectionStatus, (friendnumber), ->)
     }
-    /// Returns `true` if friend with given friend number exists. Otherwise, returns `false`
+
+    /// Returns `true` if friend with given friend number exists. Otherwise, returns
+    /// `false`
     pub fn friend_exists(&self, friendnumber: i32) -> bool {
         forward!(self, backend::Control::FriendExists, (friendnumber), ->)
     }
+
     /// Send a message to the friend
     pub fn send_message(&self, friendnumber: i32,
                         msg: String) -> Result<u32, ()> {
         forward!(self, backend::Control::SendMessage, (friendnumber, msg), ->)
     }
+
     /// Send an action message to the friend
     pub fn send_action(&self, friendnumber: i32, action: String) -> Result<u32, ()> {
         forward!(self, backend::Control::SendAction, (friendnumber, action), ->)
     }
+
     /// Set self nickname
     pub fn set_name(&self, name: String) -> Result<(),()> {
         forward!(self, backend::Control::SetName, (name), ->)
     }
+
     /// Returns the self nickname
     pub fn get_self_name(&self) -> Result<String, ()> {
         forward!(self, backend::Control::GetSelfName, ->)
     }
+
     /// Get the nickname of the friend
     pub fn get_name(&self, friendnumber: i32) -> Result<String, ()> {
         forward!(self, backend::Control::GetName, (friendnumber), ->)
     }
+
     /// Set self status message
     pub fn set_status_message(&self, status: String) -> Result<(),()> {
         forward!(self, backend::Control::SetStatusMessage, (status), ->)
     }
+
     /// Set self status (`None`, `Away` or `Busy`)
     pub fn set_user_status(&self, userstatus: UserStatus) -> Result<(), ()> {
         forward!(self, backend::Control::SetUserStatus, (userstatus), ->)
     }
+
     /// Get the status message of the friend
     pub fn get_status_message(&self, friendnumber: i32) -> Result<String, ()> {
         forward!(self, backend::Control::GetStatusMessage, (friendnumber), ->)
     }
+
     /// Get self status message
     pub fn get_self_status_message(&self) -> Result<String, ()> {
         forward!(self, backend::Control::GetSelfStatusMessage, ->)
     }
+
     /// Get status of the friend
     pub fn get_user_status(&self, friendnumber: i32) -> Result<UserStatus, ()> {
         forward!(self, backend::Control::GetUserStatus, (friendnumber), ->)
     }
+
     /// Get self status
     pub fn get_self_user_status(&self) -> Result<UserStatus, ()> {
         forward!(self, backend::Control::GetSelfUserStatus, ->)
     }
+
     /// Return timestamp of last time the friend was seen online, or 0 if never seen
     pub fn get_last_online(&self, friendnumber: i32) -> Result<u64, ()> {
         forward!(self, backend::Control::GetLastOnline, (friendnumber), ->)
     }
-    /// Set typing status for the given friend.You are responsible for turning it on or off
+
+    /// Set typing status for the given friend.You are responsible for turning it on or
+    /// off
     pub fn set_user_is_typing(&self, friendnumber: i32,
                               is_typing: bool) -> Result<(), ()> {
         forward!(self, backend::Control::SetUserIsTyping, (friendnumber, is_typing), ->)
     }
+
     /// Get typing status of the given friend
     pub fn get_is_typing(&self, friendnumber: i32) -> bool {
         forward!(self, backend::Control::GetIsTyping, (friendnumber), ->)
@@ -499,69 +521,85 @@ impl Tox {
     pub fn set_sends_receipts(&self, friendnumber: i32, yesno: bool) {
         forward!(self, backend::Control::SetSendsReceipts, (friendnumber, yesno))
     }
+
     /// Returns the number of friends
     pub fn count_friendlist(&self) -> u32 {
         forward!(self, backend::Control::CountFriendlist, ->)
     }
+
     /// Returns the number of chats
     pub fn count_chatlist(&self) -> u32 {
         forward!(self, backend::Control::CountChatlist, ->)
     }
+
     /// Get the number of online friends
     pub fn get_num_online_friends(&self) -> u32 {
         forward!(self, backend::Control::GetNumOnlineFriends, ->)
     }
+
     /// Get the Vec of valid friend IDs
     pub fn get_friendlist(&self) -> Vec<i32> {
         forward!(self, backend::Control::GetFriendlist, ->)
     }
+
     /// Get self nospam
     pub fn get_nospam(&self) -> [u8, ..4] {
         forward!(self, backend::Control::GetNospam, ->)
     }
+
     /// Set self nospam
     pub fn set_nospam(&self, nospam: [u8, ..4]) {
         forward!(self, backend::Control::SetNospam, (nospam))
     }
+
     /// Create a new groupchat, returns groupchat number
     pub fn add_groupchat(&self) -> Result<i32, ()> {
         forward!(self, backend::Control::AddGroupchat, ->)
     }
+
     /// Leave the groupchat
     pub fn del_groupchat(&self, groupnumber: i32) -> Result<(),()> {
         forward!(self, backend::Control::DelGroupchat, (groupnumber), ->)
     }
+
     /// Returns the name of peer with given peer number in the groupchat
     pub fn group_peername(&self, groupnumber: i32,
                           peernumber: i32) -> Result<String, ()> {
         forward!(self, backend::Control::GroupPeername, (groupnumber, peernumber), ->)
     }
+
     /// Invite the friend to the groupchat
     pub fn invite_friend(&self, friendnumber: i32, groupnumber: i32) -> Result<(), ()> {
         forward!(self, backend::Control::InviteFriend, (friendnumber, groupnumber), ->)
     }
+
     /// Join a groupchat using `data` obtained by `GroupInvite` event
     pub fn join_groupchat(&self, friendnumber: i32, data: Vec<u8>) -> Result<i32, ()> {
         forward!(self, backend::Control::JoinGroupchat, (friendnumber, data), ->)
     }
+
     /// Send a message to the groupchat
     pub fn group_message_send(&self, groupnumber: i32,
                               message: String) -> Result<(), ()> {
         forward!(self, backend::Control::GroupMessageSend, (groupnumber, message), ->)
     }
+
     /// Send an action message to the groupchat
     pub fn group_action_send(&self, groupnumber: i32, action: String) -> Result<(), ()> {
         forward!(self, backend::Control::GroupActionSend, (groupnumber, action), ->)
     }
+
     /// Returns number of peers in the groupchat
     pub fn group_number_peers(&self, groupnumber: i32) -> Result<i32, ()> {
         forward!(self, backend::Control::GroupNumberPeers, (groupnumber), ->)
     }
+
     /// Returns list of all peer names in the groupchat
     pub fn group_get_names(&self,
                            groupnumber: i32) -> Result<Vec<Option<String>>, ()> {
         forward!(self, backend::Control::GroupGetNames, (groupnumber), ->)
     }
+
     /// Returns the Vec of all valid group IDs
     pub fn get_chatlist(&self) -> Vec<i32> {
         forward!(self, backend::Control::GetChatlist, ->)
@@ -593,19 +631,21 @@ impl Tox {
 
     pub fn new_file_sender(&self, friendnumber: i32, filesize: u64,
                            filename: Path) -> Result<i32, ()> {
-        forward!(self, backend::Control::NewFileSender, (friendnumber, filesize, filename), ->)
+        forward!(self, backend::Control::NewFileSender,
+                 (friendnumber, filesize, filename), ->)
     }
 
     pub fn file_send_control(&self, friendnumber: i32, send_receive: TransferType,
                              filenumber: u8, message_id: u8,
                              data: Vec<u8>) -> Result<(), ()> {
-        forward!(self, backend::Control::FileSendControl, (friendnumber, send_receive, filenumber,
-                                            message_id, data), ->)
+        forward!(self, backend::Control::FileSendControl,
+                 (friendnumber, send_receive, filenumber, message_id, data), ->)
     }
 
     pub fn file_send_data(&self, friendnumber: i32, filenumber: u8,
                           data: Vec<u8>) -> Result<(), ()> {
-        forward!(self, backend::Control::FileSendData, (friendnumber, filenumber, data), ->)
+        forward!(self, backend::Control::FileSendData,
+                 (friendnumber, filenumber, data), ->)
     }
 
     pub fn file_data_size(&self, friendnumber: i32) -> Result<i32, ()> {
@@ -614,17 +654,22 @@ impl Tox {
 
     pub fn file_data_remaining(&self, friendnumber: i32, filenumber: u8,
                                send_receive: TransferType) -> Result<u64, ()> {
-        forward!(self, backend::Control::FileDataRemaining, (friendnumber, filenumber, send_receive), ->)
+        forward!(self, backend::Control::FileDataRemaining,
+                 (friendnumber, filenumber, send_receive), ->)
     }
+
     /// Bootstrap from the given (address, port, ClientId)
     pub fn bootstrap_from_address(&self, address: String, port: u16,
                                   public_key: Box<ClientId>) -> Result<(), ()> {
-        forward!(self, backend::Control::BootstrapFromAddress, (address, port, public_key), ->)
+        forward!(self, backend::Control::BootstrapFromAddress,
+                 (address, port, public_key), ->)
     }
+
     /// Returns `true` if connected to DHT. Otherwise, returns `false`
     pub fn is_connected(&self) -> bool {
         forward!(self, backend::Control::Isconnected, ->)
     }
+
     /// Create a new tox instance
     pub fn new(mut opts: ToxOptions) -> Option<Tox> {
         let (ctrl, events) = match backend::Backend::new(&mut opts.txo) {
@@ -636,14 +681,17 @@ impl Tox {
             control: ctrl,
         })
     }
+
     /// Returns a tox data that should be saved in the tox file
     pub fn save(&self) -> Vec<u8> {
         forward!(self, backend::Control::Save, ->)
     }
+
     /// Load instance data from Vec
     pub fn load(&self, data: Vec<u8>) -> Result<(), ()> {
         forward!(self, backend::Control::Load, (data), ->)
     }
+
     /// Return an events iterator
     pub fn events<'a>(&'a self) -> EventIter<'a> {
         EventIter { events: &self.events }

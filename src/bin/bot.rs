@@ -36,7 +36,7 @@ fn main() {
                         println!("connected to groupbot");
                     }
                 },
-                GroupInvite(id, ref addr) if id == groupbot_id => {
+                GroupInvite(id, _, ref addr) if id == groupbot_id => {
                     tox.join_groupchat(id, addr.clone()).unwrap();
                     println!("invited to group");
                 },

@@ -33,6 +33,9 @@ pub const TOX_FILECONTROL_RESUME_BROKEN: c_uint = 4;
 pub const TOX_AVATAR_FORMAT_NONE: c_uint = 0;
 pub const TOX_AVATAR_FORMAT_PNG:  c_uint = 1;
 
+pub const TOX_GROUPCHAT_TYPE_TEXT: c_uint = 0;
+pub const TOX_GROUPCHAT_TYPE_AV:   c_uint = 1;
+
 #[repr(C)]
 pub struct Tox_Options {
     pub ipv6enabled:   u8,
@@ -188,9 +191,10 @@ extern {
                                          Option<extern fn
                                                   (arg1: *mut Tox,
                                                    arg2: i32,
-                                                   arg3: *const u8,
-                                                   arg4: u16,
-                                                   arg5: *mut c_void)>,
+                                                   arg3: u8,
+                                                   arg4: *const u8,
+                                                   arg5: u16,
+                                                   arg6: *mut c_void)>,
                                      userdata: *mut c_void);
     pub fn tox_callback_group_message(tox: *mut Tox,
                                       function:
@@ -212,6 +216,16 @@ extern {
                                                    arg5: u16,
                                                    arg6: *mut c_void)>,
                                      userdata: *mut c_void);
+    pub fn tox_callback_group_title(tox: *mut Tox,
+                                    function:
+                                        Option<extern fn
+                                                 (arg1: *mut Tox,
+                                                  arg2: c_int,
+                                                  arg3: c_int,
+                                                  arg4: *const u8,
+                                                  arg5: u8,
+                                                  arg6: *mut c_void)>,
+                                    userdata: *mut c_void);
     pub fn tox_callback_group_namelist_change(tox: *mut Tox,
                                               function:
                                                   Option<extern fn
@@ -225,20 +239,29 @@ extern {
     pub fn tox_del_groupchat(tox: *mut Tox, groupnumber: c_int) -> c_int;
     pub fn tox_group_peername(tox: *const Tox, groupnumber: c_int, peernumber: c_int,
                               name: *mut u8) -> c_int;
+    pub fn tox_group_peer_pubkey(tox: *const Tox, groupnumber: c_int, peernumber: c_int,
+                                 pk: *mut u8) -> c_int;
     pub fn tox_invite_friend(tox: *mut Tox, friendnumber: i32,
                              groupnumber: c_int) -> c_int;
     pub fn tox_join_groupchat(tox: *mut Tox, friendnumber: i32, data: *const u8,
                               length: u16) -> c_int;
     pub fn tox_group_message_send(tox: *mut Tox, groupnumber: c_int, message: *const u8,
                                   length: u16) -> c_int;
+    pub fn tox_group_get_title(tox: *const Tox, groupnumber: c_int,
+                               title: *mut u8, max_length: u32) -> c_int;
+    pub fn tox_group_set_title(tox: *mut Tox, groupnumber: c_int, title: *const u8,
+                               length: u8) -> c_int;
     pub fn tox_group_action_send(tox: *mut Tox, groupnumber: c_int, action: *const u8,
                                  length: u16) -> c_int;
+    pub fn tox_group_peernumber_is_ours(tox: *const Tox, groupnumber: c_int,
+                                        peernumber: c_int) -> c_uint;
     pub fn tox_group_number_peers(tox: *const Tox, groupnumber: c_int) -> c_int;
     pub fn tox_group_get_names(tox: *const Tox, groupnumber: c_int,
                                names: *mut [u8, ..128u], lengths: *mut u16,
                                length: u16) -> c_int;
     pub fn tox_count_chatlist(tox: *const Tox) -> u32;
-    pub fn tox_get_chatlist(tox: *const Tox, out_list: *mut c_int, list_size: u32) -> u32;
+    pub fn tox_get_chatlist(tox: *const Tox, out_list: *mut i32, list_size: u32) -> u32;
+    pub fn tox_group_get_type(tox: *const Tox, groupnumber: c_int) -> c_int;
     pub fn tox_callback_avatar_info(tox: *mut Tox,
                                     function:
                                         Option<extern fn
