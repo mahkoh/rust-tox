@@ -1,5 +1,5 @@
 //! The core rust-tox module.
-//! 
+//!
 //! # Example (a simple echo bot)
 //! 
 //! ~~~{.rust}
