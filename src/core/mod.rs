@@ -51,14 +51,14 @@ pub const ADDRESS_SIZE:             uint = ID_CLIENT_SIZE + 6u;
 pub const AVATAR_MAX_DATA_LENGTH:   uint = 16384u;
 pub const HASH_LENGTH:              uint = 32u;
 
-#[deriving(Clone, Eq, PartialEq)]
+#[deriving(Copy, Clone, Eq, PartialEq)]
 #[repr(u8)]
 pub enum AvatarFormat {
     None = ll::TOX_AVATAR_FORMAT_NONE as u8,
     PNG = ll::TOX_AVATAR_FORMAT_PNG as u8,
 }
 
-#[deriving(Clone, Eq, PartialEq)]
+#[deriving(Copy, Clone, Eq, PartialEq)]
 #[repr(u8)]
 pub enum GroupchatType {
     Text = ll::TOX_GROUPCHAT_TYPE_TEXT as u8,
@@ -111,21 +111,12 @@ pub enum Event {
 
 /// A Tox address consist of `ClientId`, nospam and checksum
 #[repr(C)]
+#[deriving(Clone)]
 pub struct Address {
     id: ClientId,
     nospam: [u8, ..4],
-    #[allow(dead_code)]
+    // #[allow(dead_code)]
     checksum: [u8, ..2],
-}
-
-impl Clone for Address {
-    fn clone(&self) -> Address {
-        Address {
-            id: self.id.clone(),
-            nospam: self.nospam,
-            checksum: self.checksum,
-        }
-    }
 }
 
 impl Address {
@@ -204,14 +195,10 @@ fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
 
 /// `ClientId` is the main part of tox `Address`. Other two are nospam and checksum.
 #[repr(C)]
+#[deriving(Clone)]
+#[allow(missing_copy_implementations)]
 pub struct ClientId {
     pub raw: [u8, ..ID_CLIENT_SIZE],
-}
-
-impl Clone for ClientId {
-    fn clone(&self) -> ClientId {
-        ClientId { raw: self.raw }
-    }
 }
 
 impl fmt::Show for ClientId {
@@ -240,6 +227,7 @@ impl FromStr for ClientId {
 
 /// Locally-calculated cryptographic hash of the avatar data
 #[deriving(Clone, PartialEq, Eq)]
+#[allow(missing_copy_implementations)]
 pub struct Hash {
     pub hash: [u8, ..HASH_LENGTH]
 }
@@ -257,14 +245,14 @@ impl Hash {
     }
 }
 
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum ConnectionStatus {
     Online,
     Offline,
 }
 
 #[repr(u32)]
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum UserStatus {
     None = ll::TOX_USERSTATUS_NONE,
     Away = ll::TOX_USERSTATUS_AWAY,
@@ -272,7 +260,7 @@ pub enum UserStatus {
 }
 
 #[repr(u32)]
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum ChatChange {
     PeerAdd = ll::TOX_CHAT_CHANGE_PEER_ADD,
     PeerDel = ll::TOX_CHAT_CHANGE_PEER_DEL,
@@ -280,7 +268,7 @@ pub enum ChatChange {
 }
 
 #[repr(u32)]
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum ControlType {
     Accept = ll::TOX_FILECONTROL_ACCEPT,
     Pause = ll::TOX_FILECONTROL_PAUSE,
@@ -291,7 +279,7 @@ pub enum ControlType {
 
 /// Faerr - Friend Add Error
 #[repr(i32)]
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum Faerr {
     Toolong = ll::TOX_FAERR_TOOLONG,
     Nomessage = ll::TOX_FAERR_NOMESSAGE,
@@ -303,7 +291,7 @@ pub enum Faerr {
     Nomem = ll::TOX_FAERR_NOMEM,
 }
 
-#[deriving(Clone, PartialEq, Eq)]
+#[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum TransferType {
     Receiving,
     Sending,

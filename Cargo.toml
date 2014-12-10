@@ -5,3 +5,9 @@ authors = [ ]
 
 [lib]
 name = "tox"
+
+[[example]]
+name = "bot"
+
+[[example]]
+name = "test"
