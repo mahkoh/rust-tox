@@ -1,5 +1,5 @@
-#![feature(globs)]
-#![feature(phase)]
+#![feature(phase,globs)]
+
 extern crate regex;
 #[phase(plugin)]
 extern crate regex_macros;
@@ -18,7 +18,7 @@ static BOT_NAME: &'static str = "mahkohBot";
 fn main() {
     let tox = Tox::new(ToxOptions::new()).unwrap();
     tox.set_name(BOT_NAME.to_string()).unwrap();
-    
+
     let bootstrap_key = from_str(BOOTSTRAP_KEY).unwrap();
     tox.bootstrap_from_address(BOOTSTRAP_IP.to_string(), BOOTSTRAP_PORT, 
                                box bootstrap_key).unwrap();
@@ -42,21 +42,16 @@ fn main() {
                 },
                 GroupMessage(group, _, msg) => {
                     println!("{}", msg);
-                    match pattern.captures(msg.as_slice()) {
-                        Some(c) => {
-                            let msg = match c.at(2) {
-                                "xot"    => Some("https://github.com/mahkoh/Xot"),
-                                _ => None,
-                            };
-                            match msg {
-                                Some(s) => {
-                                    let _ = tox.group_message_send(group, s.to_string());
-                                    println!("{}", "#### sent");
-                                },
-                                None => { },
-                            }
-                        },
-                        None => { }
+                    if let Some(cap) = pattern.captures(msg.as_slice()) {
+                        let msg = match cap.at(2) {
+                            "xot"    => Some("https://github.com/mahkoh/Xot"),
+                            _ => None,
+                        };
+
+                        if let Some(s) = msg {
+                            let _ = tox.group_message_send(group, s.to_string());
+                            println!("{}", "#### sent");
+                        }
                     }
                 },
                 _ => { }

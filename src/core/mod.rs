@@ -1,8 +1,8 @@
 //! The core rust-tox module.
 //!
 //! # Example (a simple echo bot)
-//! 
-//! ~~~{.rust}
+//!
+//! ```no_run
 //! #![feature(globs)]
 //! extern crate tox;
 //! 
@@ -31,7 +31,7 @@
 //!         std::io::timer::sleep(std::time::Duration::milliseconds(50));
 //!     }
 //! }
-//! ~~~
+//! ```
 
 // TODO: Wrap unwrapped core functions
 
