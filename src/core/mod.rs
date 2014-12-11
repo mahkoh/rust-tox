@@ -262,18 +262,18 @@ pub enum UserStatus {
 #[repr(u32)]
 #[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum ChatChange {
-    PeerAdd = ll::TOX_CHAT_CHANGE_PEER_ADD,
-    PeerDel = ll::TOX_CHAT_CHANGE_PEER_DEL,
+    PeerAdd  = ll::TOX_CHAT_CHANGE_PEER_ADD,
+    PeerDel  = ll::TOX_CHAT_CHANGE_PEER_DEL,
     PeerName = ll::TOX_CHAT_CHANGE_PEER_NAME,
 }
 
 #[repr(u32)]
 #[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum ControlType {
-    Accept = ll::TOX_FILECONTROL_ACCEPT,
-    Pause = ll::TOX_FILECONTROL_PAUSE,
-    Kill = ll::TOX_FILECONTROL_KILL,
-    Finished = ll::TOX_FILECONTROL_FINISHED,
+    Accept       = ll::TOX_FILECONTROL_ACCEPT,
+    Pause        = ll::TOX_FILECONTROL_PAUSE,
+    Kill         = ll::TOX_FILECONTROL_KILL,
+    Finished     = ll::TOX_FILECONTROL_FINISHED,
     ResumeBroken = ll::TOX_FILECONTROL_RESUME_BROKEN,
 }
 
@@ -281,14 +281,14 @@ pub enum ControlType {
 #[repr(i32)]
 #[deriving(Copy, Clone, PartialEq, Eq)]
 pub enum Faerr {
-    Toolong = ll::TOX_FAERR_TOOLONG,
-    Nomessage = ll::TOX_FAERR_NOMESSAGE,
-    Ownkey = ll::TOX_FAERR_OWNKEY,
-    Alreadysent = ll::TOX_FAERR_ALREADYSENT,
-    Unknown = ll::TOX_FAERR_UNKNOWN,
-    Badchecksum = ll::TOX_FAERR_BADCHECKSUM,
+    Toolong      = ll::TOX_FAERR_TOOLONG,
+    Nomessage    = ll::TOX_FAERR_NOMESSAGE,
+    Ownkey       = ll::TOX_FAERR_OWNKEY,
+    Alreadysent  = ll::TOX_FAERR_ALREADYSENT,
+    Unknown      = ll::TOX_FAERR_UNKNOWN,
+    Badchecksum  = ll::TOX_FAERR_BADCHECKSUM,
     Setnewnospam = ll::TOX_FAERR_SETNEWNOSPAM,
-    Nomem = ll::TOX_FAERR_NOMEM,
+    Nomem        = ll::TOX_FAERR_NOMEM,
 }
 
 #[deriving(Copy, Clone, PartialEq, Eq)]

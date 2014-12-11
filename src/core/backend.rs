@@ -548,7 +548,7 @@ impl Backend {
     }
 
     fn new_file_sender(&mut self, friendnumber: i32, filesize: u64,
-                           filename: Path) -> Result<i32, ()> {
+                       filename: Path) -> Result<i32, ()> {
         let filename = filename.into_vec();
         let res = unsafe {
             tox_new_file_sender(self.raw, friendnumber, filesize,
@@ -564,8 +564,9 @@ impl Backend {
                          filenumber: u8, message_id: u8,
                          data: Vec<u8>) -> Result<(), ()> {
         let res = unsafe {
-            tox_file_send_control(self.raw, friendnumber, send_receive as u8, filenumber,
-                                  message_id, data.as_ptr(), data.len() as u16)
+            tox_file_send_control(self.raw, friendnumber, 1 - send_receive as u8,
+                                  filenumber, message_id, data.as_ptr(),
+                                  data.len() as u16)
         };
         match res {
             0 => Ok(()),
@@ -997,14 +998,14 @@ extern fn on_file_control(_: *mut Tox, friendnumber: i32, receive_send: u8,
         0 => Receiving,
         _ => return,
     };
-    let data = to_slice(data as *const u8, len as uint).to_vec();
+    let data = to_slice(data, len as uint).to_vec();
     send_or_stop!(internal, FileControl(friendnumber, tt, filenumber, ty, data));
 }
 
 extern fn on_file_data(_: *mut Tox, friendnumber: i32, filenumber: u8, data: *const u8,
                        len: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
-    let data = to_slice(data as *const u8, len as uint).to_vec();
+    let data = to_slice(data, len as uint).to_vec();
     send_or_stop!(internal, FileData(friendnumber, filenumber, data));
 }
 
