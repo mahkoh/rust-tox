@@ -111,7 +111,7 @@ pub enum Event {
 
 /// A Tox address consist of `ClientId`, nospam and checksum
 #[repr(C)]
-#[deriving(Clone)]
+#[deriving(PartialEq, Clone)]
 pub struct Address {
     id: ClientId,
     nospam: [u8, ..4],
@@ -120,6 +120,9 @@ pub struct Address {
 }
 
 impl Address {
+    pub fn client_id(&self) -> &ClientId {
+        &self.id
+    }
     fn checksum(&self) -> [u8, ..2] {
         let mut check = [0u8, 0u8];
         for (i, &x) in self.id.raw.iter().enumerate() {
@@ -195,7 +198,7 @@ fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
 
 /// `ClientId` is the main part of tox `Address`. Other two are nospam and checksum.
 #[repr(C)]
-#[deriving(Clone)]
+#[deriving(PartialEq, Clone)]
 #[allow(missing_copy_implementations)]
 pub struct ClientId {
     pub raw: [u8, ..ID_CLIENT_SIZE],
