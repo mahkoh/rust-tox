@@ -659,7 +659,7 @@ impl Backend {
             internal: internal,
             control: control_recv,
         };
-        task::spawn(proc() backend.run());
+        task::spawn(move || backend.run());
         Some((control_send, event_recv))
     }
 
