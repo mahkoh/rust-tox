@@ -500,9 +500,8 @@ impl Backend {
         let mut format = 0;
         let mut length = 0;
         let res = unsafe {
-            tox_get_self_avatar(self.raw as *const _, &mut format, data.as_mut_ptr(),
-                                &mut length, AVATAR_MAX_DATA_LENGTH as u32,
-                                hash.hash.as_mut_ptr())
+            tox_get_self_avatar(self.raw, &mut format, data.as_mut_ptr(), &mut length,
+                                AVATAR_MAX_DATA_LENGTH as u32, hash.hash.as_mut_ptr())
         };
         if res == -1 {
             return Err(());
@@ -519,7 +518,7 @@ impl Backend {
 
     fn request_avatar_info(&self, friendnumber: i32) -> Result<(), ()> {
         let res = unsafe {
-            tox_request_avatar_info(self.raw as *const _, friendnumber)
+            tox_request_avatar_info(self.raw, friendnumber)
         };
         match res {
             0 => Ok(()),
@@ -529,7 +528,7 @@ impl Backend {
 
     fn request_avatar_data(&self, friendnumber: i32) -> Result<(), ()> {
         let res = unsafe {
-            tox_request_avatar_data(self.raw as *const _, friendnumber)
+            tox_request_avatar_data(self.raw, friendnumber)
         };
         match res {
             0 => Ok(()),
@@ -626,7 +625,7 @@ impl Backend {
     }
 
     pub fn new(opts: &mut Tox_Options) -> Option<(SyncSender<Control>, Receiver<Event>)> {
-        let tox = unsafe { tox_new(opts as *mut _) };
+        let tox = unsafe { tox_new(opts) };
         if tox.is_null() {
             return None;
         }
@@ -856,8 +855,8 @@ fn to_slice<'a, T>(p: *const T, l: uint) -> &'a [T] {
     unsafe { transmute(Slice { data: p, len: l }) }
 }
 
-extern fn on_friend_request(_: *mut Tox, public_key: *const u8, data: *const u8, length: u16,
-                            internal: *mut c_void) {
+extern fn on_friend_request(_: *mut Tox, public_key: *const u8, data: *const u8,
+                            length: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
     let msg = parse_string!(data, length);
     let id = ClientId { raw: unsafe { ptr::read(public_key as *const _) } };
