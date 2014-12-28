@@ -10,7 +10,7 @@
 //! 
 //! fn main() {
 //!     let tox = Tox::new(ToxOptions::new()).unwrap();
-//!     let bootkey = box from_str("951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F").unwrap();
+//!     let bootkey = box "951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F".parse().unwrap();
 //!     tox.bootstrap_from_address("192.254.75.98".to_string(), 33445, bootkey).unwrap();
 //! 
 //!     println!("Bot key: {}", tox.get_address());
@@ -43,13 +43,14 @@ pub use self::Event::*;
 mod backend;
 mod ll;
 
-pub const MAX_NAME_LENGTH:          uint = 128u;
-pub const MAX_MESSAGE_LENGTH:       uint = 1368u;
-pub const MAX_STATUSMESSAGE_LENGTH: uint = 1007u;
-pub const ID_CLIENT_SIZE:           uint = 32u;
-pub const ADDRESS_SIZE:             uint = ID_CLIENT_SIZE + 6u;
-pub const AVATAR_MAX_DATA_LENGTH:   uint = 16384u;
-pub const HASH_LENGTH:              uint = 32u;
+pub const MAX_NAME_LENGTH:              uint = 128u;
+pub const MAX_MESSAGE_LENGTH:           uint = 1368u;
+pub const MAX_STATUSMESSAGE_LENGTH:     uint = 1007u;
+pub const TOX_MAX_FRIENDREQUEST_LENGTH: uint = 1016u;
+pub const ID_CLIENT_SIZE:               uint = 32u;
+pub const ADDRESS_SIZE:                 uint = ID_CLIENT_SIZE + 6u;
+pub const AVATAR_MAX_DATA_LENGTH:       uint = 16384u;
+pub const HASH_LENGTH:                  uint = 32u;
 
 #[deriving(Copy, Clone, Eq, PartialEq)]
 #[repr(u8)]
@@ -312,6 +313,13 @@ pub struct ToxOptions {
     txo: ll::Tox_Options
 }
 
+#[repr(u8)]
+pub enum ProxyType {
+    None,
+    Socks5,
+    HTTP,
+}
+
 impl ToxOptions {
     /// Create a default ToxOptions struct
     pub fn new() -> ToxOptions {
@@ -319,7 +327,7 @@ impl ToxOptions {
             txo: ll::Tox_Options {
                 ipv6enabled: 0,
                 udp_disabled: 0,
-                proxy_enabled: 0,
+                proxy_type: 0,
                 proxy_address: [0, ..256u],
                 proxy_port: 0,
             }
@@ -339,7 +347,7 @@ impl ToxOptions {
     }
 
     /// Use a proxy
-    pub fn proxy(mut self, addr: &str, port: u16) -> ToxOptions {
+    pub fn proxy(mut self, ty: ProxyType, addr: &str, port: u16) -> ToxOptions {
         if addr.len() >= 256 {
             panic!("proxy address is too long");
         }
@@ -347,7 +355,7 @@ impl ToxOptions {
         self.txo.proxy_address.as_mut_slice()
                               .as_unsigned_mut()
                               .clone_from_slice(addr.as_bytes());
-        self.txo.proxy_enabled = 1;
+        self.txo.proxy_type = ty as u8;
         self.txo.proxy_port = port;
         self
     }

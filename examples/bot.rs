@@ -19,11 +19,11 @@ fn main() {
     let tox = Tox::new(ToxOptions::new()).unwrap();
     tox.set_name(BOT_NAME.to_string()).unwrap();
 
-    let bootstrap_key = from_str(BOOTSTRAP_KEY).unwrap();
+    let bootstrap_key = BOOTSTRAP_KEY.parse().unwrap();
     tox.bootstrap_from_address(BOOTSTRAP_IP.to_string(), BOOTSTRAP_PORT, 
                                box bootstrap_key).unwrap();
 
-    let groupchat_addr = from_str(GROUPCHAT_ADDR).unwrap();
+    let groupchat_addr = GROUPCHAT_ADDR.parse().unwrap();
     let groupbot_id = tox.add_friend(box groupchat_addr, "Hello".to_string()).ok().unwrap();
 
     let pattern = regex!(r"^(\[.+?\]: )?%(\w+)");
@@ -44,7 +44,7 @@ fn main() {
                     println!("{}", msg);
                     if let Some(cap) = pattern.captures(msg.as_slice()) {
                         let msg = match cap.at(2) {
-                            "xot"    => Some("https://github.com/mahkoh/Xot"),
+                            Some("xot") => Some("https://github.com/mahkoh/Xot"),
                             _ => None,
                         };
 

@@ -1,5 +1,5 @@
 use std;
-use std::{ptr, task};
+use std::{ptr};
 use std::io::{timer};
 use std::num::{Int};
 use std::raw::{Slice};
@@ -459,7 +459,7 @@ impl Backend {
         let mut real_names = Vec::with_capacity(len as uint);
         for (name, &length) in names.iter().zip(lengths.iter()) {
             match std::str::from_utf8(name.slice_to(length as uint)) {
-                Some(s) => real_names.push(Some(s.to_string())),
+                Ok(s) => real_names.push(Some(s.to_string())),
                 _ => real_names.push(None),
             }
         }
@@ -631,26 +631,27 @@ impl Backend {
         }
         let (event_send, event_recv) = channel();
         let mut internal = box Internal { stop: false, events: event_send };
+
         unsafe {
             let ip = &mut *internal as *mut _ as *mut c_void;
-            tox_callback_friend_request(        tox, Some(on_friend_request),        ip);
-            tox_callback_friend_message(        tox, Some(on_friend_message),        ip);
-            tox_callback_friend_action(         tox, Some(on_friend_action),         ip);
-            tox_callback_name_change(           tox, Some(on_name_change),           ip);
-            tox_callback_status_message(        tox, Some(on_status_message),        ip);
-            tox_callback_user_status(           tox, Some(on_user_status),           ip);
-            tox_callback_typing_change(         tox, Some(on_typing_change),         ip);
-            tox_callback_read_receipt(          tox, Some(on_read_receipt),          ip);
-            tox_callback_connection_status(     tox, Some(on_connection_status),     ip);
-            tox_callback_group_invite(          tox, Some(on_group_invite),          ip);
-            tox_callback_group_message(         tox, Some(on_group_message),         ip);
-            tox_callback_group_action(          tox, Some(on_group_action),          ip);
-            tox_callback_group_namelist_change( tox, Some(on_group_namelist_change), ip);
-            tox_callback_file_send_request(     tox, Some(on_file_send_request),     ip);
-            tox_callback_file_control(          tox, Some(on_file_control),          ip);
-            tox_callback_file_data(             tox, Some(on_file_data),             ip);
-            tox_callback_avatar_info(           tox, Some(on_avatar_info),           ip);
-            tox_callback_avatar_data(           tox, Some(on_avatar_data),           ip);
+            tox_callback_friend_request(        tox, on_friend_request,        ip);
+            tox_callback_friend_message(        tox, on_friend_message,        ip);
+            tox_callback_friend_action(         tox, on_friend_action,         ip);
+            tox_callback_name_change(           tox, on_name_change,           ip);
+            tox_callback_status_message(        tox, on_status_message,        ip);
+            tox_callback_user_status(           tox, on_user_status,           ip);
+            tox_callback_typing_change(         tox, on_typing_change,         ip);
+            tox_callback_read_receipt(          tox, on_read_receipt,          ip);
+            tox_callback_connection_status(     tox, on_connection_status,     ip);
+            tox_callback_group_invite(          tox, on_group_invite,          ip);
+            tox_callback_group_message(         tox, on_group_message,         ip);
+            tox_callback_group_action(          tox, on_group_action,          ip);
+            tox_callback_group_namelist_change( tox, on_group_namelist_change, ip);
+            tox_callback_file_send_request(     tox, on_file_send_request,     ip);
+            tox_callback_file_control(          tox, on_file_control,          ip);
+            tox_callback_file_data(             tox, on_file_data,             ip);
+            tox_callback_avatar_info(           tox, on_avatar_info,           ip);
+            tox_callback_avatar_data(           tox, on_avatar_data,           ip);
         }
         let (control_send, control_recv) = sync_channel(1);
         let backend = Backend {
@@ -658,7 +659,7 @@ impl Backend {
             internal: internal,
             control: control_recv,
         };
-        task::spawn(move || backend.run());
+        std::thread::Thread::spawn(move || backend.run()).detach();
         Some((control_send, event_recv))
     }
 
@@ -844,8 +845,8 @@ macro_rules! parse_string {
         {
             let slice = to_slice($p as *const u8, $l as uint);
             match std::str::from_utf8(slice) {
-                Some(s) => s.to_string(),
-                None => return,
+                Ok(s) => s.to_string(),
+                _ => return,
             }
         }
     }

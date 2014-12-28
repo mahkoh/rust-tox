@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::option::{Option};
+//use std::option::{Option};
 use libc::{c_int, c_uint, c_char, c_void};
 
 pub const TOX_FAERR_TOOLONG:      c_int = -1;
@@ -40,8 +40,8 @@ pub const TOX_GROUPCHAT_TYPE_AV:   c_uint = 1;
 pub struct Tox_Options {
     pub ipv6enabled:   u8,
     pub udp_disabled:  u8,
-    pub proxy_enabled: u8,
-    pub proxy_address: [c_char, ..256u],
+    pub proxy_type:    u8,
+    pub proxy_address: [u8, ..256],
     pub proxy_port:    u16,
 }
 
@@ -86,80 +86,80 @@ extern {
     pub fn tox_get_friendlist(tox: *const Tox, out_list: *mut i32, list_size: u32) -> u32;
     pub fn tox_callback_friend_request(tox: *mut Tox,
                                        function:
-                                           Option<extern fn
+                                           /*Option<*/extern fn
                                                     (arg1: *mut Tox,
                                                      arg2: *const u8,
                                                      arg3: *const u8,
                                                      arg4: u16,
-                                                     arg5: *mut c_void)>,
+                                                     arg5: *mut c_void)/*>*/,
                                        userdata: *mut c_void);
     pub fn tox_callback_friend_message(tox: *mut Tox,
                                        function:
-                                           Option<extern fn
+                                           /*Option<*/extern fn
                                              (arg1: *mut Tox,
                                               arg2: i32,
                                               arg3: *const u8,
                                               arg4: u16,
-                                              arg5: *mut c_void)>,
+                                              arg5: *mut c_void)/*>*/,
                                        userdata: *mut c_void);
     pub fn tox_callback_friend_action(tox: *mut Tox,
                                       function:
-                                          Option<extern fn
+                                          /*Option<*/extern fn
                                                    (arg1: *mut Tox,
                                                     arg2: i32,
                                                     arg3: *const u8,
                                                     arg4: u16,
-                                                    arg5: *mut c_void)>,
+                                                    arg5: *mut c_void)/*>*/,
                                       userdata: *mut c_void);
     pub fn tox_callback_name_change(tox: *mut Tox,
                                     function:
-                                        Option<extern fn
+                                        /*Option<*/extern fn
                                                  (arg1: *mut Tox,
                                                   arg2: i32,
                                                   arg3: *const u8,
                                                   arg4: u16,
-                                                  arg5: *mut c_void)>,
+                                                  arg5: *mut c_void)/*>*/,
                                     userdata: *mut c_void);
     pub fn tox_callback_status_message(tox: *mut Tox,
                                        function:
-                                           Option<extern fn
+                                           /*Option<*/extern fn
                                                     (arg1: *mut Tox,
                                                      arg2: i32,
                                                      arg3: *const u8,
                                                      arg4: u16,
-                                                     arg5: *mut c_void)>,
+                                                     arg5: *mut c_void)/*>*/,
                                        userdata: *mut c_void);
     pub fn tox_callback_user_status(tox: *mut Tox,
                                     function:
-                                        Option<extern fn
+                                        /*Option<*/extern fn
                                                  (arg1: *mut Tox,
                                                   arg2: i32,
                                                   arg3: u8,
-                                                  arg4: *mut c_void)>,
+                                                  arg4: *mut c_void)/*>*/,
                                     userdata: *mut c_void);
     pub fn tox_callback_typing_change(tox: *mut Tox,
                                       function:
-                                          Option<extern fn
+                                          /*Option<*/extern fn
                                                    (arg1: *mut Tox,
                                                     arg2: i32,
                                                     arg3: u8,
-                                                    arg4: *mut c_void)>,
+                                                    arg4: *mut c_void)/*>*/,
                                       userdata: *mut c_void);
     pub fn tox_callback_read_receipt(tox: *mut Tox,
                                      function:
-                                         Option<extern fn
+                                         /*Option<*/extern fn
                                                   (arg1: *mut Tox,
                                                    arg2: i32,
                                                    arg3: u32,
-                                                   arg4: *mut c_void)>,
+                                                   arg4: *mut c_void)/*>*/,
                                      userdata: *mut c_void);
     pub fn tox_callback_connection_status(tox: *mut Tox,
                                           function:
-                                              Option<extern fn
+                                              /*Option<*/extern fn
                                                        (arg1: *mut Tox,
                                                         arg2: i32,
                                                         arg3: u8,
-                                                        arg4: *mut c_void)>,
+                                                        arg4: *mut c_void)/*>*/,
                                           userdata: *mut c_void);
     pub fn tox_get_nospam(tox: *const Tox) -> u32;
     pub fn tox_set_nospam(tox: *mut Tox, nospam: u32);
@@ -168,10 +168,10 @@ extern {
                                             friendnumber: i32,
                                             byte: u8,
                                             packet_handler_callback:
-                                                Option<extern fn
+                                                /*Option<*/extern fn
                                                          (arg1: *mut c_void,
                                                           arg2: *const u8,
-                                                          arg3: u32) -> c_int>,
+                                                          arg3: u32) -> c_int/*>*/,
                                             object: *mut c_void) -> c_int;
     pub fn tox_send_lossy_packet(tox: *const Tox, friendnumber: i32, data: *const u8,
                                  length: u32) -> c_int;
@@ -179,61 +179,61 @@ extern {
                                                friendnumber: i32,
                                                byte: u8,
                                                packet_handler_callback:
-                                                   Option<extern fn
+                                                   /*Option<*/extern fn
                                                             (arg1: *mut c_void,
                                                              arg2: *const u8,
-                                                             arg3: u32) -> c_int>,
+                                                             arg3: u32) -> c_int/*>*/,
                                                object: *mut c_void) -> c_int;
     pub fn tox_send_lossless_packet(tox: *const Tox, friendnumber: i32, data: *const u8,
                                     length: u32) -> c_int;
     pub fn tox_callback_group_invite(tox: *mut Tox,
                                      function:
-                                         Option<extern fn
+                                         /*Option<*/extern fn
                                                   (arg1: *mut Tox,
                                                    arg2: i32,
                                                    arg3: u8,
                                                    arg4: *const u8,
                                                    arg5: u16,
-                                                   arg6: *mut c_void)>,
+                                                   arg6: *mut c_void)/*>*/,
                                      userdata: *mut c_void);
     pub fn tox_callback_group_message(tox: *mut Tox,
                                       function:
-                                          Option<extern fn
+                                          /*Option<*/extern fn
                                                    (arg1: *mut Tox,
                                                     arg2: c_int,
                                                     arg3: c_int,
                                                     arg4: *const u8,
                                                     arg5: u16,
-                                                    arg6: *mut c_void)>,
+                                                    arg6: *mut c_void)/*>*/,
                                       userdata: *mut c_void);
     pub fn tox_callback_group_action(tox: *mut Tox,
                                      function:
-                                         Option<extern fn
+                                         /*Option<*/extern fn
                                                   (arg1: *mut Tox,
                                                    arg2: c_int,
                                                    arg3: c_int,
                                                    arg4: *const u8,
                                                    arg5: u16,
-                                                   arg6: *mut c_void)>,
+                                                   arg6: *mut c_void)/*>*/,
                                      userdata: *mut c_void);
     pub fn tox_callback_group_title(tox: *mut Tox,
                                     function:
-                                        Option<extern fn
+                                        /*Option<*/extern fn
                                                  (arg1: *mut Tox,
                                                   arg2: c_int,
                                                   arg3: c_int,
                                                   arg4: *const u8,
                                                   arg5: u8,
-                                                  arg6: *mut c_void)>,
+                                                  arg6: *mut c_void)/*>*/,
                                     userdata: *mut c_void);
     pub fn tox_callback_group_namelist_change(tox: *mut Tox,
                                               function:
-                                                  Option<extern fn
+                                                  /*Option<*/extern fn
                                                            (arg1: *mut Tox,
                                                             arg2: c_int,
                                                             arg3: c_int,
                                                             arg4: u8,
-                                                            arg5: *mut c_void)>,
+                                                            arg5: *mut c_void)/*>*/,
                                               userdata: *mut c_void);
     pub fn tox_add_groupchat(tox: *mut Tox) -> c_int;
     pub fn tox_del_groupchat(tox: *mut Tox, groupnumber: c_int) -> c_int;
@@ -264,23 +264,23 @@ extern {
     pub fn tox_group_get_type(tox: *const Tox, groupnumber: c_int) -> c_int;
     pub fn tox_callback_avatar_info(tox: *mut Tox,
                                     function:
-                                        Option<extern fn
+                                        /*Option<*/extern fn
                                                  (arg1: *mut Tox,
                                                   arg2: i32,
                                                   arg3: u8,
                                                   arg4: *mut u8,
-                                                  arg5: *mut c_void)>,
+                                                  arg5: *mut c_void)/*>*/,
                                     userdata: *mut c_void);
     pub fn tox_callback_avatar_data(tox: *mut Tox,
                                     function:
-                                        Option<extern fn
+                                        /*Option<*/extern fn
                                                  (arg1: *mut Tox,
                                                   arg2: i32,
                                                   arg3: u8,
                                                   arg4: *mut u8,
                                                   arg5: *mut u8,
                                                   arg6: u32,
-                                                  arg7: *mut c_void)>,
+                                                  arg7: *mut c_void)/*>*/,
                                     userdata: *mut c_void);
     pub fn tox_set_avatar(tox: *mut Tox, format: u8, data: *const u8,
                           length: u32) -> c_int;
@@ -293,18 +293,18 @@ extern {
     pub fn tox_request_avatar_data(tox: *const Tox, friendnumber: i32) -> c_int;
     pub fn tox_callback_file_send_request(tox: *mut Tox,
                                           function:
-                                              Option<extern fn
+                                              /*Option<*/extern fn
                                                        (arg1: *mut Tox,
                                                         arg2: i32,
                                                         arg3: u8,
                                                         arg4: u64,
                                                         arg5: *const u8,
                                                         arg6: u16,
-                                                        arg7: *mut c_void)>,
+                                                        arg7: *mut c_void)/*>*/,
                                           userdata: *mut c_void);
     pub fn tox_callback_file_control(tox: *mut Tox,
                                      function:
-                                         Option<extern fn
+                                         /*Option<*/extern fn
                                                   (arg1: *mut Tox,
                                                    arg2: i32,
                                                    arg3: u8,
@@ -312,17 +312,17 @@ extern {
                                                    arg5: u8,
                                                    arg6: *const u8,
                                                    arg7: u16,
-                                                   arg8: *mut c_void)>,
+                                                   arg8: *mut c_void)/*>*/,
                                      userdata: *mut c_void);
     pub fn tox_callback_file_data(tox: *mut Tox,
                                   function:
-                                      Option<extern fn
+                                      /*Option<*/extern fn
                                                (arg1: *mut Tox,
                                                 arg2: i32,
                                                 arg3: u8,
                                                 arg4: *const u8,
                                                 arg5: u16,
-                                                arg6: *mut c_void)>,
+                                                arg6: *mut c_void)/*>*/,
                                   userdata: *mut c_void);
     pub fn tox_new_file_sender(tox: *mut Tox, friendnumber: i32, filesize: u64,
                                filename: *const u8, filename_length: u16) -> c_int;
