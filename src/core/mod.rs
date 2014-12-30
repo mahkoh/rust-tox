@@ -15,20 +15,16 @@
 //! 
 //!     println!("Bot key: {}", tox.get_address());
 //! 
-//!     loop {
-//!         for ev in tox.events() {
-//!             match ev {
-//!                 FriendRequest(fnum, _) => {
-//!                     tox.add_friend_norequest(fnum).unwrap();
-//!                 },
-//!                 FriendMessage(fnum, msg) => {
-//!                     tox.send_message(fnum, msg).unwrap();
-//!                 },
-//!                 _ => (),
-//!             }
+//!     for ev in tox.events().iter() {
+//!         match ev {
+//!             FriendRequest(fnum, _) => {
+//!                 tox.add_friend_norequest(fnum).unwrap();
+//!             },
+//!             FriendMessage(fnum, msg) => {
+//!                 tox.send_message(fnum, msg).unwrap();
+//!             },
+//!             _ => (),
 //!         }
-//! 
-//!         std::io::timer::sleep(std::time::Duration::milliseconds(50));
 //!     }
 //! }
 //! ```
@@ -314,6 +310,7 @@ pub struct ToxOptions {
 }
 
 #[repr(u8)]
+#[deriving(Copy)]
 pub enum ProxyType {
     None,
     Socks5,
@@ -691,22 +688,8 @@ impl Tox {
         forward!(self, backend::Control::Load, (data), ->)
     }
 
-    /// Return an events iterator
-    pub fn events<'a>(&'a self) -> EventIter<'a> {
-        EventIter { events: &self.events }
-    }
-}
-
-/// Tox events iterator
-pub struct EventIter<'a> {
-    events: &'a Receiver<Event>,
-}
-
-impl<'a> Iterator<Event> for EventIter<'a> {
-    fn next(&mut self) -> Option<Event> {
-        match self.events.try_recv() {
-            Ok(t) => Some(t),
-            _ => None,
-        }
+    /// Return an events receiver
+    pub fn events(&self) -> &Receiver<Event> {
+        &self.events
     }
 }

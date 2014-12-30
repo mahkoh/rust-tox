@@ -27,36 +27,33 @@ fn main() {
     let groupbot_id = tox.add_friend(box groupchat_addr, "Hello".to_string()).ok().unwrap();
 
     let pattern = regex!(r"^(\[.+?\]: )?%(\w+)");
-    loop {
-        for ev in tox.events() {
-            match ev {
-                StatusMessage(id, _) if id == groupbot_id => {
-                    if tox.count_chatlist() < 1 {
-                        tox.send_message(groupbot_id, "invite".to_string()).unwrap();
-                        println!("connected to groupbot");
-                    }
-                },
-                GroupInvite(id, _, ref addr) if id == groupbot_id => {
-                    tox.join_groupchat(id, addr.clone()).unwrap();
-                    println!("invited to group");
-                },
-                GroupMessage(group, _, msg) => {
-                    println!("{}", msg);
-                    if let Some(cap) = pattern.captures(msg.as_slice()) {
-                        let msg = match cap.at(2) {
-                            Some("xot") => Some("https://github.com/mahkoh/Xot"),
-                            _ => None,
-                        };
+    for ev in tox.events().iter() {
+        match ev {
+            StatusMessage(id, _) if id == groupbot_id => {
+                if tox.count_chatlist() < 1 {
+                    tox.send_message(groupbot_id, "invite".to_string()).unwrap();
+                    println!("connected to groupbot");
+                }
+            },
+            GroupInvite(id, _, ref addr) if id == groupbot_id => {
+                tox.join_groupchat(id, addr.clone()).unwrap();
+                println!("invited to group");
+            },
+            GroupMessage(group, _, msg) => {
+                println!("{}", msg);
+                if let Some(cap) = pattern.captures(msg.as_slice()) {
+                    let msg = match cap.at(2) {
+                        Some("xot") => Some("https://github.com/mahkoh/Xot"),
+                        _ => None,
+                    };
 
-                        if let Some(s) = msg {
-                            let _ = tox.group_message_send(group, s.to_string());
-                            println!("{}", "#### sent");
-                        }
+                    if let Some(s) = msg {
+                        let _ = tox.group_message_send(group, s.to_string());
+                        println!("{}", "#### sent");
                     }
-                },
-                _ => { }
-            }
+                }
+            },
+            _ => { }
         }
-        std::io::timer::sleep(std::time::Duration::milliseconds(50));
     }
 }

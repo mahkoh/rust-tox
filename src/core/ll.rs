@@ -20,6 +20,8 @@ pub const TOX_USERSTATUS_INVALID: c_uint = 3;
 #[repr(C)]
 pub struct Tox;
 
+unsafe impl Send for *mut Tox { }
+
 pub const TOX_CHAT_CHANGE_PEER_ADD:  c_uint = 0;
 pub const TOX_CHAT_CHANGE_PEER_DEL:  c_uint = 1;
 pub const TOX_CHAT_CHANGE_PEER_NAME: c_uint = 2;

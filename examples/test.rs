@@ -28,34 +28,31 @@ fn main() {
     let groupbot = "56A1ADE4B65B86BCD51CC73E2CD4E542179F47959FE3E0E21B4B0ACDADE51855D34D34D37CB5".parse().unwrap();
     tox.set_name("test".to_string()).ok().unwrap();
     tox.add_friend(box groupbot, "Hello".to_string()).ok().unwrap();
-    loop {
-        for ev in tox.events() {
-            match ev {
-                FriendRequest(..)       => println!("FriendRequest(..)       "),
-                FriendMessage(..)       => println!("FriendMessage(..)       "),
-                FriendAction(..)        => println!("FriendAction(..)        "),
-                NameChange(..)          => println!("NameChange(..)          "),
-                StatusMessage(id, _)       => {
-                    println!("StatusMessage(..)       ");
-                    let _ = tox.send_message(id, "invite".to_string());
-                },
-                UserStatusVar(..)       => println!("UserStatusVar(..)       "),
-                TypingChange(..)        => println!("TypingChange(..)        "),
-                ReadReceipt(..)         => println!("ReadReceipt(..)         "),
-                ConnectionStatusVar(..) => println!("ConnectionStatusVar(..) "),
-                GroupInvite(id, _, group)  => {
-                    println!("GroupInvite(..)         ");
-                    let _ = tox.join_groupchat(id, group);
-                },
-                GroupMessage(_, _, msg) => println!("GroupMessage(_, _, {})", msg),
-                GroupNamelistChange(..) => println!("GroupNamelistChange(..) "),
-                FileSendRequest(..)     => println!("FileSendRequest(..)     "),
-                FileControl(..)         => println!("FileControl(..)         "),
-                FileData(..)            => println!("FileData(..)            "),
-                AvatarInfo(..)          => println!("AvatarInfo(..)          "),
-                AvatarData(..)          => println!("AvatarData(..)          "),
-            }
+    for ev in tox.events().iter() {
+        match ev {
+            FriendRequest(..)       => println!("FriendRequest(..)       "),
+            FriendMessage(..)       => println!("FriendMessage(..)       "),
+            FriendAction(..)        => println!("FriendAction(..)        "),
+            NameChange(..)          => println!("NameChange(..)          "),
+            StatusMessage(id, _)       => {
+                println!("StatusMessage(..)       ");
+                let _ = tox.send_message(id, "invite".to_string());
+            },
+            UserStatusVar(..)       => println!("UserStatusVar(..)       "),
+            TypingChange(..)        => println!("TypingChange(..)        "),
+            ReadReceipt(..)         => println!("ReadReceipt(..)         "),
+            ConnectionStatusVar(..) => println!("ConnectionStatusVar(..) "),
+            GroupInvite(id, _, group)  => {
+                println!("GroupInvite(..)         ");
+                let _ = tox.join_groupchat(id, group);
+            },
+            GroupMessage(_, _, msg) => println!("GroupMessage(_, _, {})", msg),
+            GroupNamelistChange(..) => println!("GroupNamelistChange(..) "),
+            FileSendRequest(..)     => println!("FileSendRequest(..)     "),
+            FileControl(..)         => println!("FileControl(..)         "),
+            FileData(..)            => println!("FileData(..)            "),
+            AvatarInfo(..)          => println!("AvatarInfo(..)          "),
+            AvatarData(..)          => println!("AvatarData(..)          "),
         }
-        std::io::timer::sleep(std::time::Duration::milliseconds(50));
     }
 }
