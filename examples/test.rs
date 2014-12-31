@@ -1,11 +1,18 @@
 #![feature(globs)]
 extern crate tox;
+extern crate libc;
 
 use tox::core::*;
+use tox::av::Event::*;
+
+use std::comm::{Select};
+use std::collections::{HashMap};
 
 fn main() {
     let tox = Tox::new(ToxOptions::new()).unwrap();
     let av = tox.av(2).unwrap();
+
+    let mut audiomap = HashMap::new();
 
     let ids = [
         ("192.254.75.98"   , 33445 , "951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F"),
@@ -29,34 +36,144 @@ fn main() {
     let groupbot = "56A1ADE4B65B86BCD51CC73E2CD4E542179F47959FE3E0E21B4B0ACDADE51855D34D34D37CB5".parse().unwrap();
     tox.set_name("test".to_string()).ok().unwrap();
     tox.add_friend(box groupbot, "Hello".to_string()).ok().unwrap();
-    for ev in tox.events().iter() {
-        match ev {
-            FriendRequest(..)       => println!("FriendRequest(..)       "),
-            FriendMessage(..)       => println!("FriendMessage(..)       "),
-            FriendAction(..)        => println!("FriendAction(..)        "),
-            NameChange(..)          => println!("NameChange(..)          "),
-            StatusMessage(id, _)       => {
-                println!("StatusMessage(..)       ");
-                let _ = tox.send_message(id, "invite".to_string());
-            },
-            UserStatusVar(..)       => println!("UserStatusVar(..)       "),
-            TypingChange(..)        => println!("TypingChange(..)        "),
-            ReadReceipt(..)         => println!("ReadReceipt(..)         "),
-            ConnectionStatusVar(..) => println!("ConnectionStatusVar(..) "),
-            GroupInvite(id, ty, data)  => {
-                println!("GroupInvite(_, {}, _)         ", ty);
-                match ty {
-                    GroupchatType::Text => tox.join_groupchat(id, data).unwrap(),
-                    GroupchatType::Av => av.join_av_groupchat(id, data).unwrap(),
-                };
-            },
-            GroupMessage(_, _, msg) => println!("GroupMessage(_, _, {})", msg),
-            GroupNamelistChange(..) => println!("GroupNamelistChange(..) "),
-            FileSendRequest(..)     => println!("FileSendRequest(..)     "),
-            FileControl(..)         => println!("FileControl(..)         "),
-            FileData(..)            => println!("FileData(..)            "),
-            AvatarInfo(..)          => println!("AvatarInfo(..)          "),
-            AvatarData(..)          => println!("AvatarData(..)          "),
+
+    let sel = Select::new();
+    let mut tox_rx = sel.handle(tox.events());
+    let mut av_rx = sel.handle(av.events());
+    unsafe {
+        tox_rx.add();
+        av_rx.add();
+    }
+
+    loop {
+        sel.wait();
+
+        while let Ok(ev) = tox.events().try_recv() {
+            match ev {
+                FriendRequest(..)       => println!("FriendRequest(..)       "),
+                FriendMessage(..)       => println!("FriendMessage(..)       "),
+                FriendAction(..)        => println!("FriendAction(..)        "),
+                NameChange(..)          => println!("NameChange(..)          "),
+                StatusMessage(id, _)       => {
+                    println!("StatusMessage(..)       ");
+                    let _ = tox.send_message(id, "invite".to_string());
+                },
+                UserStatusVar(..)       => println!("UserStatusVar(..)       "),
+                TypingChange(..)        => println!("TypingChange(..)        "),
+                ReadReceipt(..)         => println!("ReadReceipt(..)         "),
+                ConnectionStatusVar(..) => println!("ConnectionStatusVar(..) "),
+                GroupInvite(id, ty, data)  => {
+                    println!("GroupInvite(_, {}, _)         ", ty);
+                    match ty {
+                        GroupchatType::Text => tox.join_groupchat(id, data).unwrap(),
+                        GroupchatType::Av => av.join_av_groupchat(id, data).unwrap(),
+                    };
+                },
+                GroupMessage(_, _, msg) => println!("GroupMessage(_, _, {})", msg),
+                GroupNamelistChange(gnum, pnum, change) => {
+                    println!("GroupNamelistChange(..) ");
+                    if change == ChatChange::PeerDel {
+                        audiomap.remove(&(gnum, pnum));
+                    }
+                },
+                FileSendRequest(..)     => println!("FileSendRequest(..)     "),
+                FileControl(..)         => println!("FileControl(..)         "),
+                FileData(..)            => println!("FileData(..)            "),
+                AvatarInfo(..)          => println!("AvatarInfo(..)          "),
+                AvatarData(..)          => println!("AvatarData(..)          "),
+            }
+        }
+
+        while let Ok(ev) = av.events().try_recv() {
+            match ev {
+                Invite(..)             => println!("Av::Invite(..)"),
+                Ringing(..)            => println!("Av::Ringing(..)"),
+                Start(..)              => println!("Av::Start(..)"),
+                Cancel(..)             => println!("Av::Cancel(..)"),
+                Reject(..)             => println!("Av::Reject(..)"),
+                End(..)                => println!("Av::End(..)"),
+                RequestTimeout(..)     => println!("Av::RequestTimeout(..)"),
+                PeerTimeout(..)        => println!("Av::PeerTimeout(..)"),
+                PeerCsChange(..)       => println!("Av::PeerCsChange(..)"),
+                SelfCsChange(..)       => println!("Av::SelfCsChange(..)"),
+                GroupAudio(gnum, pnum, bit)  => {
+                    //println!("Av::GroupAudio(..) SR: {} CH: {} N: {}", bit.sample_rate,
+                    //         bit.channels, bit.samples);
+                    if audiomap.get(&(gnum, pnum)).is_none() {
+                        audiomap.insert((gnum, pnum), alsa::open().unwrap());
+                    }
+                    let alsa = *audiomap.get(&(gnum, pnum)).unwrap();
+                    alsa::write(alsa, &bit).unwrap();
+                }
+            }
+        }
+    }
+}
+
+mod alsa {
+    use libc::{c_int, c_uint, c_void, c_ulong, c_long, c_char, puts, EPIPE};
+    use tox::av::{AudioBit};
+
+    pub const RATE: u32 = 48000;
+    pub const CHANNELS: u8 = 2;
+
+    #[repr(C)]
+    pub struct snd_pcm_t;
+
+    pub const SND_PCM_STREAM_PLAYBACK: c_uint = 0;
+    pub const SND_PCM_FORMAT_S16_LE: c_uint = 2;
+    pub const SND_PCM_ACCESS_RW_INTERLEAVED: c_int = 3;
+
+    #[link(name = "asound")]
+    extern {
+        fn snd_pcm_open(pcm: *mut *mut snd_pcm_t, name: *const u8, stream: c_uint,
+                        mode: c_int) -> c_int;
+        fn snd_pcm_set_params(pcm: *mut snd_pcm_t, format: c_uint, access: c_int,
+                              channels: c_uint, rate: c_uint, soft_resample: c_int,
+                              latency: c_uint) -> c_int;
+        fn snd_pcm_writei(pcm: *mut snd_pcm_t, buffer: *const c_void,
+                          size: c_ulong) -> c_long;
+        fn snd_strerror(e: c_int) -> *const c_char;
+        fn snd_pcm_prepare(pcm: *mut snd_pcm_t) -> c_int;
+    }
+
+    pub fn open() -> Option<*mut snd_pcm_t> {
+        unsafe {
+            let mut ptr = 0 as *mut snd_pcm_t;
+            let e = snd_pcm_open(&mut ptr, b"default\0".as_ptr(), SND_PCM_STREAM_PLAYBACK,
+                                 0);
+            if e != 0 {
+                puts(snd_strerror(e));
+                return None;
+            }
+            let e = snd_pcm_set_params(ptr, SND_PCM_FORMAT_S16_LE,
+                                  SND_PCM_ACCESS_RW_INTERLEAVED, CHANNELS as c_uint,
+                                  RATE as c_uint, 1, 500000);
+            if e != 0 {
+                puts(snd_strerror(e));
+                return None;
+            }
+            Some(ptr)
+        }
+    }
+
+    pub fn write(p: *mut snd_pcm_t, bit: &AudioBit) -> Option<()> {
+        unsafe {
+            if bit.sample_rate != RATE || bit.channels != CHANNELS {
+                return None;
+            }
+            let e = snd_pcm_writei(p, bit.pcm.as_ptr() as *const c_void,
+                                   bit.samples as c_ulong);
+            if e < 0 {
+                if e as c_int == -EPIPE {
+                    snd_pcm_prepare(p);
+                    Some(())
+                } else {
+                    None
+                }
+            } else {
+                Some(())
+            }
         }
     }
 }
