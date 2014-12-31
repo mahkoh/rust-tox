@@ -18,6 +18,7 @@ pub const TOX_USERSTATUS_BUSY:    c_uint = 2;
 pub const TOX_USERSTATUS_INVALID: c_uint = 3;
 
 #[repr(C)]
+#[allow(missing_copy_implementations)]
 pub struct Tox;
 
 unsafe impl Send for *mut Tox { }
@@ -39,6 +40,7 @@ pub const TOX_GROUPCHAT_TYPE_TEXT: c_uint = 0;
 pub const TOX_GROUPCHAT_TYPE_AV:   c_uint = 1;
 
 #[repr(C)]
+#[deriving(Copy)]
 pub struct Tox_Options {
     pub ipv6enabled:   u8,
     pub udp_disabled:  u8,

@@ -1,10 +1,12 @@
 use std;
-use std::{ptr};
+use std::{ptr, comm};
 use std::io::{timer};
 use std::num::{Int};
 use std::raw::{Slice};
 use std::mem::{transmute};
 use std::c_vec::{CVec};
+use std::time::{Duration};
+
 use core::ll::*;
 use core::{Address, ClientId, Event, ConnectionStatus,
            UserStatus, ChatChange, ControlType, Faerr, TransferType, AvatarFormat,
@@ -12,6 +14,7 @@ use core::{Address, ClientId, Event, ConnectionStatus,
 use core::Event::*;
 use core::ConnectionStatus::*;
 use core::TransferType::*;
+use av;
 
 use libc::{c_void, c_uint};
 
@@ -38,7 +41,6 @@ pub enum Control {
     GetLastOnline(i32, Sender<Result<u64, ()>>),
     SetUserIsTyping(i32, bool, Sender<Result<(), ()>>),
     GetIsTyping(i32, Sender<bool>),
-    SetSendsReceipts(i32, bool),
     CountFriendlist(Sender<u32>),
     GetNumOnlineFriends(Sender<u32>),
     GetFriendlist(Sender<Vec<i32>>),
@@ -68,15 +70,17 @@ pub enum Control {
     FileDataRemaining(i32, u8, TransferType, Sender<Result<u64, ()>>),
     BootstrapFromAddress(String, u16, Box<ClientId>, Sender<Result<(), ()>>),
     Isconnected(Sender<bool>),
-    Kill,
     Save(Sender<Vec<u8>>),
     Load(Vec<u8>, Sender<Result<(), ()>>),
+    Raw(Sender<*mut Tox>),
+    Av(i32, Sender<Option<av::Av>>),
 }
 
 pub struct Backend {
     raw: *mut Tox,
     internal: Box<Internal>,
     control: Receiver<Control>,
+    av: Option<Receiver<()>>,
 }
 
 impl Drop for Backend {
@@ -624,6 +628,18 @@ impl Backend {
         }
     }
 
+    fn av(&mut self, max_calls: i32) -> Option<av::Av> {
+        if self.av.is_some() {
+            return None;
+        }
+        let (send_end, recv_end) = sync_channel(0);
+        let av = av::Av::new(self.raw, max_calls, send_end);
+        if av.is_some() {
+            self.av = Some(recv_end);
+        }
+        av
+    }
+
     pub fn new(opts: &mut Tox_Options) -> Option<(SyncSender<Control>, Receiver<Event>)> {
         let tox = unsafe { tox_new(opts) };
         if tox.is_null() {
@@ -658,6 +674,7 @@ impl Backend {
             raw: tox,
             internal: internal,
             control: control_recv,
+            av: None,
         };
         std::thread::Thread::spawn(move || backend.run()).detach();
         Some((control_send, event_recv))
@@ -672,15 +689,30 @@ impl Backend {
 
             'inner: loop {
                 match self.control.try_recv() {
-                    Ok(Control::Kill) => break 'outer,
                     Ok(ctrl) => self.control(ctrl),
-                    Err(std::comm::Disconnected) => break 'outer,
+                    Err(comm::Disconnected) => break 'outer,
                     _ => break 'inner,
                 }
             }
 
+            if self.av.as_ref().map(|x| x.try_recv()) == Some(Err(comm::Disconnected)) {
+                self.av.take();
+            }
+
             let interval = unsafe { tox_do_interval(self.raw) as i64 };
-            timer::sleep(::std::time::Duration::milliseconds(interval));
+            timer::sleep(Duration::milliseconds(interval));
+        }
+
+        // If we have an AV session then we have to continue
+        if let Some(ref av) = self.av {
+            loop {
+                if av.try_recv() == Err(comm::Disconnected) {
+                    break;
+                }
+                let interval = unsafe { tox_do_interval(self.raw) as i64 };
+                timer::sleep(Duration::milliseconds(interval));
+                unsafe { tox_do(self.raw); }
+            }
         }
     }
 
@@ -730,8 +762,6 @@ impl Backend {
                 ret.send(self.set_user_is_typing(friend, is)),
             Control::GetIsTyping(friend, ret) =>
                 ret.send(self.get_is_typing(friend)),
-//            Control::SetSendsReceipts(friend, send) =>
-//                self.set_sends_receipts(friend, send),
             Control::CountFriendlist(ret) =>
                 ret.send(self.count_friendlist()),
             Control::GetNumOnlineFriends(ret) =>
@@ -794,7 +824,10 @@ impl Backend {
                 ret.send(self.save()),
             Control::Load(data, ret) =>
                 ret.send(self.load(data)),
-            _ => unreachable!(),
+            Control::Raw(ret) =>
+                ret.send(self.raw),
+            Control::Av(max_calls, ret) =>
+                ret.send(self.av(max_calls)),
         }
     }
 

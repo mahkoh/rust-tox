@@ -35,9 +35,10 @@ use std::{fmt, mem};
 use std::str::{FromStr};
 use rust_core::slice::{MutableIntSlice};
 pub use self::Event::*;
+use av;
 
 mod backend;
-mod ll;
+pub mod ll;
 
 pub const MAX_NAME_LENGTH:              uint = 128u;
 pub const MAX_MESSAGE_LENGTH:           uint = 1368u;
@@ -48,14 +49,14 @@ pub const ADDRESS_SIZE:                 uint = ID_CLIENT_SIZE + 6u;
 pub const AVATAR_MAX_DATA_LENGTH:       uint = 16384u;
 pub const HASH_LENGTH:                  uint = 32u;
 
-#[deriving(Copy, Clone, Eq, PartialEq)]
+#[deriving(Copy, Clone, Eq, PartialEq, Show)]
 #[repr(u8)]
 pub enum AvatarFormat {
     None = ll::TOX_AVATAR_FORMAT_NONE as u8,
     PNG = ll::TOX_AVATAR_FORMAT_PNG as u8,
 }
 
-#[deriving(Copy, Clone, Eq, PartialEq)]
+#[deriving(Copy, Clone, Eq, PartialEq, Show)]
 #[repr(u8)]
 pub enum GroupchatType {
     Text = ll::TOX_GROUPCHAT_TYPE_TEXT as u8,
@@ -305,6 +306,7 @@ pub enum TransferType {
 ///     let txo = ToxOptions::new().ipv6().proxy("[proxy address]", port);
 ///     let tox = Tox::new(txo);
 /// ```
+#[deriving(Copy)]
 pub struct ToxOptions {
     txo: ll::Tox_Options
 }
@@ -388,12 +390,6 @@ macro_rules! forward {
             $slf.control.send($name);
     };
 
-}
-
-impl Drop for Tox {
-    fn drop(&mut self) {
-        forward!(self, backend::Control::Kill)
-    }
 }
 
 impl Tox {
@@ -512,10 +508,6 @@ impl Tox {
     /// Get typing status of the given friend
     pub fn get_is_typing(&self, friendnumber: i32) -> bool {
         forward!(self, backend::Control::GetIsTyping, (friendnumber), ->)
-    }
-
-    pub fn set_sends_receipts(&self, friendnumber: i32, yesno: bool) {
-        forward!(self, backend::Control::SetSendsReceipts, (friendnumber, yesno))
     }
 
     /// Returns the number of friends
@@ -691,5 +683,13 @@ impl Tox {
     /// Return an events receiver
     pub fn events(&self) -> &Receiver<Event> {
         &self.events
+    }
+
+    pub unsafe fn raw(&self) -> *mut ll::Tox {
+        forward!(self, backend::Control::Raw, ->)
+    }
+
+    pub fn av(&self, max_calls: i32) -> Option<av::Av> {
+        forward!(self, backend::Control::Av, (max_calls), ->)
     }
 }

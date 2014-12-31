@@ -5,6 +5,7 @@ use tox::core::*;
 
 fn main() {
     let tox = Tox::new(ToxOptions::new()).unwrap();
+    let av = tox.av(2).unwrap();
 
     let ids = [
         ("192.254.75.98"   , 33445 , "951C88B7E75C867418ACDB5D273821372BB5BD652740BCDF623A4FA293E75D2F"),
@@ -42,9 +43,12 @@ fn main() {
             TypingChange(..)        => println!("TypingChange(..)        "),
             ReadReceipt(..)         => println!("ReadReceipt(..)         "),
             ConnectionStatusVar(..) => println!("ConnectionStatusVar(..) "),
-            GroupInvite(id, _, group)  => {
-                println!("GroupInvite(..)         ");
-                let _ = tox.join_groupchat(id, group);
+            GroupInvite(id, ty, data)  => {
+                println!("GroupInvite(_, {}, _)         ", ty);
+                match ty {
+                    GroupchatType::Text => tox.join_groupchat(id, data).unwrap(),
+                    GroupchatType::Av => av.join_av_groupchat(id, data).unwrap(),
+                };
             },
             GroupMessage(_, _, msg) => println!("GroupMessage(_, _, {})", msg),
             GroupNamelistChange(..) => println!("GroupNamelistChange(..) "),
