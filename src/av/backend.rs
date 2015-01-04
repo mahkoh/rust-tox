@@ -7,6 +7,7 @@ use std::mem::{transmute, zeroed};
 use std;
 use std::io::{timer};
 use std::c_vec::{CVec};
+use std::sync::mpsc::{channel, Sender, Receiver, SyncSender, TryRecvError, sync_channel};
 
 pub enum Control {
     Call(i32, Option<Box<CallSettings>>, i32, Sender<Result<i32, i32>>), 
@@ -175,7 +176,7 @@ impl Backend {
 
     pub fn get_call_state(&mut self, call_id: i32) -> CallState {
         let state = unsafe { toxav_get_call_state(self.raw, call_id) };
-        FromPrimitive::from_i64(state as i64).unwrap()
+        std::num::FromPrimitive::from_i64(state as i64).unwrap()
     }
 
     pub fn capability_supported(&mut self, call_id: i32,
@@ -290,7 +291,7 @@ impl Backend {
             'inner: loop {
                 match self.control.try_recv() {
                     Ok(ctrl) => self.control(ctrl),
-                    Err(std::comm::Disconnected) => break 'outer,
+                    Err(TryRecvError::Disconnected) => break 'outer,
                     _ => break 'inner,
                 }
             }
@@ -303,43 +304,43 @@ impl Backend {
     fn control(&mut self, ctrl: Control) {
         match ctrl {
             Control::Call(friend_id, settings, timeout, ret) =>
-                ret.send(self.call(friend_id, settings, timeout)),
+                ret.send(self.call(friend_id, settings, timeout)).unwrap(),
             Control::Hangup(call_id, ret) =>
-                ret.send(self.hangup(call_id)),
+                ret.send(self.hangup(call_id)).unwrap(),
             Control::Answer(call_id, settings, ret) =>
-                ret.send(self.answer(call_id, settings)),
+                ret.send(self.answer(call_id, settings)).unwrap(),
             Control::Reject(call_id, ret) =>
-                ret.send(self.reject(call_id)),
+                ret.send(self.reject(call_id)).unwrap(),
             Control::Cancel(call_id, peer_id, ret) =>
-                ret.send(self.cancel(call_id, peer_id)),
+                ret.send(self.cancel(call_id, peer_id)).unwrap(),
             Control::ChangeSettings(call_id, settings, ret) =>
-                ret.send(self.change_settings(call_id, settings)),
+                ret.send(self.change_settings(call_id, settings)).unwrap(),
             Control::StopCall(call_id, ret) =>
-                ret.send(self.stop_call(call_id)),
+                ret.send(self.stop_call(call_id)).unwrap(),
             Control::PrepareTransmission(call_id, support_video, ret) =>
-                ret.send(self.prepare_transmission(call_id, support_video)),
+                ret.send(self.prepare_transmission(call_id, support_video)).unwrap(),
             Control::KillTransmission(call_id, ret) =>
-                ret.send(self.kill_transmission(call_id)),
+                ret.send(self.kill_transmission(call_id)).unwrap(),
             Control::PrepareAudioFrame(call_id, dest, frame, ret) =>
-                ret.send(self.prepare_audio_frame(call_id, dest, frame)),
+                ret.send(self.prepare_audio_frame(call_id, dest, frame)).unwrap(),
             Control::SendAudio(call_id, frame, ret) =>
-                ret.send(self.send_audio(call_id, frame)),
+                ret.send(self.send_audio(call_id, frame)).unwrap(),
             Control::GetPeerCallSettings(call_id, peer_id, ret) =>
-                ret.send(self.get_peer_call_settings(call_id, peer_id)),
+                ret.send(self.get_peer_call_settings(call_id, peer_id)).unwrap(),
             Control::GetPeerId(call_id, peer_id, ret) =>
-                ret.send(self.get_peer_id(call_id, peer_id)),
+                ret.send(self.get_peer_id(call_id, peer_id)).unwrap(),
             Control::GetCallState(call_id, ret) =>
-                ret.send(self.get_call_state(call_id)),
+                ret.send(self.get_call_state(call_id)).unwrap(),
             Control::CapabilitySupported(call_id, capability, ret) =>
-                ret.send(self.capability_supported(call_id, capability)),
+                ret.send(self.capability_supported(call_id, capability)).unwrap(),
             Control::GetActiveCount(ret) =>
-                ret.send(self.get_active_count()),
+                ret.send(self.get_active_count()).unwrap(),
             Control::AddAvGroupchat(ret) =>
-                ret.send(self.add_av_groupchat()),
+                ret.send(self.add_av_groupchat()).unwrap(),
             Control::JoinAvGroupchat(friend_id, data, ret) =>
-                ret.send(self.join_av_groupchat(friend_id, data)),
+                ret.send(self.join_av_groupchat(friend_id, data)).unwrap(),
             Control::GroupSendAudio(group_id, bit, ret) =>
-                ret.send(self.group_send_audio(group_id, bit)),
+                ret.send(self.group_send_audio(group_id, bit)).unwrap(),
         }
     }
 }
@@ -367,7 +368,7 @@ macro_rules! get_int {
 
 macro_rules! send_or_stop {
     ($internal:ident, $event:expr) => {
-        match $internal.events.send_opt($event) {
+        match $internal.events.send($event) {
             Ok(()) => { },
             _ => $internal.stop = true,
         }

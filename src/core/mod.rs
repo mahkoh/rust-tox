@@ -33,7 +33,8 @@
 
 use std::{fmt, mem};
 use std::str::{FromStr};
-use rust_core::slice::{MutableIntSlice};
+use std::sync::mpsc::{channel, Receiver, SyncSender};
+use rust_core::slice::{IntSliceExt};
 pub use self::Event::*;
 use av;
 
@@ -49,14 +50,14 @@ pub const ADDRESS_SIZE:                 uint = ID_CLIENT_SIZE + 6u;
 pub const AVATAR_MAX_DATA_LENGTH:       uint = 16384u;
 pub const HASH_LENGTH:                  uint = 32u;
 
-#[deriving(Copy, Clone, Eq, PartialEq, Show)]
+#[derive(Copy, Clone, Eq, PartialEq, Show)]
 #[repr(u8)]
 pub enum AvatarFormat {
     None = ll::TOX_AVATAR_FORMAT_NONE as u8,
     PNG = ll::TOX_AVATAR_FORMAT_PNG as u8,
 }
 
-#[deriving(Copy, Clone, Eq, PartialEq, Show)]
+#[derive(Copy, Clone, Eq, PartialEq, Show)]
 #[repr(u8)]
 pub enum GroupchatType {
     Text = ll::TOX_GROUPCHAT_TYPE_TEXT as u8,
@@ -64,7 +65,7 @@ pub enum GroupchatType {
 }
 
 /// Tox events enum
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum Event {
     /// The first value is the client id, the second is the friend request message
     FriendRequest(Box<ClientId>, String),
@@ -109,19 +110,19 @@ pub enum Event {
 
 /// A Tox address consist of `ClientId`, nospam and checksum
 #[repr(C)]
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 pub struct Address {
     id: ClientId,
-    nospam: [u8, ..4],
+    nospam: [u8; 4],
     // #[allow(dead_code)]
-    checksum: [u8, ..2],
+    checksum: [u8; 2],
 }
 
 impl Address {
     pub fn client_id(&self) -> &ClientId {
         &self.id
     }
-    fn checksum(&self) -> [u8, ..2] {
+    fn checksum(&self) -> [u8; 2] {
         let mut check = [0u8, 0u8];
         for (i, &x) in self.id.raw.iter().enumerate() {
             check[i % 2] ^= x;
@@ -153,9 +154,9 @@ impl FromStr for Address {
             return None;
         }
 
-        let mut id     = [0u8, ..32];
-        let mut nospam = [0u8, ..4];
-        let mut check  = [0u8, ..2];
+        let mut id     = [0u8; 32];
+        let mut nospam = [0u8; 4];
+        let mut check  = [0u8; 2];
 
         if parse_hex(s.slice(0, 2*ID_CLIENT_SIZE), id.as_mut_slice()).is_err() {
             return None;
@@ -196,10 +197,10 @@ fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
 
 /// `ClientId` is the main part of tox `Address`. Other two are nospam and checksum.
 #[repr(C)]
-#[deriving(PartialEq, Clone)]
+#[derive(PartialEq, Clone)]
 #[allow(missing_copy_implementations)]
 pub struct ClientId {
-    pub raw: [u8, ..ID_CLIENT_SIZE],
+    pub raw: [u8; ID_CLIENT_SIZE],
 }
 
 impl fmt::Show for ClientId {
@@ -217,7 +218,7 @@ impl FromStr for ClientId {
             return None;
         }
 
-        let mut id = [0u8, ..ID_CLIENT_SIZE];
+        let mut id = [0u8; ID_CLIENT_SIZE];
 
         if parse_hex(s, id.as_mut_slice()).is_err() {
             return None;
@@ -227,10 +228,10 @@ impl FromStr for ClientId {
 }
 
 /// Locally-calculated cryptographic hash of the avatar data
-#[deriving(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[allow(missing_copy_implementations)]
 pub struct Hash {
-    pub hash: [u8, ..HASH_LENGTH]
+    pub hash: [u8; HASH_LENGTH]
 }
 
 impl Hash {
@@ -246,14 +247,14 @@ impl Hash {
     }
 }
 
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum ConnectionStatus {
     Online,
     Offline,
 }
 
 #[repr(u32)]
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum UserStatus {
     None = ll::TOX_USERSTATUS_NONE,
     Away = ll::TOX_USERSTATUS_AWAY,
@@ -261,7 +262,7 @@ pub enum UserStatus {
 }
 
 #[repr(u32)]
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum ChatChange {
     PeerAdd  = ll::TOX_CHAT_CHANGE_PEER_ADD,
     PeerDel  = ll::TOX_CHAT_CHANGE_PEER_DEL,
@@ -269,7 +270,7 @@ pub enum ChatChange {
 }
 
 #[repr(u32)]
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum ControlType {
     Accept       = ll::TOX_FILECONTROL_ACCEPT,
     Pause        = ll::TOX_FILECONTROL_PAUSE,
@@ -280,7 +281,7 @@ pub enum ControlType {
 
 /// Faerr - Friend Add Error
 #[repr(i32)]
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Faerr {
     Toolong      = ll::TOX_FAERR_TOOLONG,
     Nomessage    = ll::TOX_FAERR_NOMESSAGE,
@@ -292,7 +293,7 @@ pub enum Faerr {
     Nomem        = ll::TOX_FAERR_NOMEM,
 }
 
-#[deriving(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub enum TransferType {
     Receiving,
     Sending,
@@ -306,13 +307,13 @@ pub enum TransferType {
 ///     let txo = ToxOptions::new().ipv6().proxy("[proxy address]", port);
 ///     let tox = Tox::new(txo);
 /// ```
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct ToxOptions {
     txo: ll::Tox_Options
 }
 
 #[repr(u8)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum ProxyType {
     None,
     Socks5,
@@ -327,7 +328,7 @@ impl ToxOptions {
                 ipv6enabled: 0,
                 udp_disabled: 0,
                 proxy_type: 0,
-                proxy_address: [0, ..256u],
+                proxy_address: [0; 256u],
                 proxy_port: 0,
             }
         }
@@ -367,27 +368,21 @@ pub struct Tox {
 }
 
 macro_rules! forward {
-    ($slf:expr, $name:expr, ($($pp:ident),+), ->) => {
-        {
+    ($slf:expr, $name:expr, ($($pp:ident),+), ->) => {{
             let (snd, rcv) = channel();
-            $slf.control.send($name($($pp),*, snd));
-            rcv.recv()
-        }
-    };
-    ($slf:expr, $name:expr, ->) => {
-        {
+            $slf.control.send($name($($pp),*, snd)).unwrap();
+            rcv.recv().unwrap()
+    }};
+    ($slf:expr, $name:expr, ->) => {{
             let (snd, rcv) = channel();
-            $slf.control.send($name(snd));
-            rcv.recv()
-        }
-    };
-    ($slf:expr, $name:expr, ($($pp:ident),+)) => {
-        {
-            $slf.control.send($name($($pp),*));
-        }
-    };
+            $slf.control.send($name(snd)).unwrap();
+            rcv.recv().unwrap()
+    }};
+    ($slf:expr, $name:expr, ($($pp:ident),+)) => {{
+            $slf.control.send($name($($pp),*)).unwrap()
+    }};
     ($slf:expr, $name:expr) => {
-            $slf.control.send($name);
+            $slf.control.send($name).unwrap()
     };
 
 }
@@ -531,12 +526,12 @@ impl Tox {
     }
 
     /// Get self nospam
-    pub fn get_nospam(&self) -> [u8, ..4] {
+    pub fn get_nospam(&self) -> [u8; 4] {
         forward!(self, backend::Control::GetNospam, ->)
     }
 
     /// Set self nospam
-    pub fn set_nospam(&self, nospam: [u8, ..4]) {
+    pub fn set_nospam(&self, nospam: [u8; 4]) {
         forward!(self, backend::Control::SetNospam, (nospam))
     }
 

@@ -1,9 +1,11 @@
+use std::sync::mpsc::{channel, Receiver, SyncSender};
+
 use core::ll::{Tox};
 
 pub mod ll;
 mod backend;
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub enum Event {
     Invite(i32),
     Ringing(i32),
@@ -19,14 +21,14 @@ pub enum Event {
 }
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum CallType {
     Audio = 192,
     Video,
 }
 
 #[repr(C)]
-#[deriving(Copy, FromPrimitive)]
+#[derive(Copy, FromPrimitive)]
 pub enum CallState {
     NonExistent = -1,
     Inviting,
@@ -37,7 +39,7 @@ pub enum CallState {
 }
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Error {
     ErrorNone                   = 0,
     ErrorUnknown                = -1,
@@ -59,7 +61,7 @@ pub enum Error {
 }
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum Capability {
     AudioEncoding = 1 << 0,
     AudioDecoding = 1 << 1,
@@ -68,7 +70,7 @@ pub enum Capability {
 }
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct CallSettings {
     pub call_type: CallType,
 
@@ -82,7 +84,7 @@ pub struct CallSettings {
     pub audio_channels: u32,
 }
 
-#[deriving(Clone)]
+#[derive(Clone)]
 pub struct AudioBit {
     pub pcm: Vec<i16>,
     pub samples: u32,
@@ -102,27 +104,21 @@ pub struct Av {
 }
 
 macro_rules! forward {
-    ($slf:expr, $name:expr, ($($pp:ident),+), ->) => {
-        {
+    ($slf:expr, $name:expr, ($($pp:ident),+), ->) => {{
             let (snd, rcv) = channel();
-            $slf.control.send($name($($pp),*, snd));
-            rcv.recv()
-        }
-    };
-    ($slf:expr, $name:expr, ->) => {
-        {
+            $slf.control.send($name($($pp),*, snd)).unwrap();
+            rcv.recv().unwrap()
+    }};
+    ($slf:expr, $name:expr, ->) => {{
             let (snd, rcv) = channel();
-            $slf.control.send($name(snd));
-            rcv.recv()
-        }
-    };
-    ($slf:expr, $name:expr, ($($pp:ident),+)) => {
-        {
-            $slf.control.send($name($($pp),*));
-        }
-    };
+            $slf.control.send($name(snd)).unwrap();
+            rcv.recv().unwrap()
+    }};
+    ($slf:expr, $name:expr, ($($pp:ident),+)) => {{
+            $slf.control.send($name($($pp),*)).unwrap()
+    }};
     ($slf:expr, $name:expr) => {
-            $slf.control.send($name);
+            $slf.control.send($name).unwrap()
     };
 
 }

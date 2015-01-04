@@ -5,7 +5,7 @@ extern crate libc;
 use tox::core::*;
 use tox::av::Event::*;
 
-use std::comm::{Select};
+use std::sync::mpsc::{Select};
 use std::collections::{HashMap};
 
 fn main() {

@@ -40,12 +40,12 @@ pub const TOX_GROUPCHAT_TYPE_TEXT: c_uint = 0;
 pub const TOX_GROUPCHAT_TYPE_AV:   c_uint = 1;
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub struct Tox_Options {
     pub ipv6enabled:   u8,
     pub udp_disabled:  u8,
     pub proxy_type:    u8,
-    pub proxy_address: [u8, ..256],
+    pub proxy_address: [u8; 256],
     pub proxy_port:    u16,
 }
 
@@ -261,7 +261,7 @@ extern {
                                         peernumber: c_int) -> c_uint;
     pub fn tox_group_number_peers(tox: *const Tox, groupnumber: c_int) -> c_int;
     pub fn tox_group_get_names(tox: *const Tox, groupnumber: c_int,
-                               names: *mut [u8, ..128u], lengths: *mut u16,
+                               names: *mut [u8; 128u], lengths: *mut u16,
                                length: u16) -> c_int;
     pub fn tox_count_chatlist(tox: *const Tox) -> u32;
     pub fn tox_get_chatlist(tox: *const Tox, out_list: *mut i32, list_size: u32) -> u32;

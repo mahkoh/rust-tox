@@ -20,7 +20,7 @@ pub type ToxAudioCallback = extern fn(tox: *mut Tox, groupnumber: c_int,
                                       userdata: *mut c_void);
 
 #[repr(C)]
-#[deriving(Copy)]
+#[derive(Copy)]
 pub enum ToxAvCallbackId {
     av_OnInvite,
     av_OnRinging,
