@@ -1,4 +1,4 @@
-#![feature(globs, macro_rules, slicing_syntax)]
+#![feature(slicing_syntax)]
 #![crate_type = "lib"]
 #![crate_name = "tox"]
 #![allow(non_camel_case_types)]

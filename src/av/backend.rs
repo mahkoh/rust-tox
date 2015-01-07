@@ -4,9 +4,8 @@ use av::{Event, CallSettings, CallState, Capability, AudioBit};
 
 use libc::{c_void, c_int, c_uint, c_char};
 use std::mem::{transmute, zeroed};
-use std;
+use std::{self, slice};
 use std::io::{timer};
-use std::c_vec::{CVec};
 use std::sync::mpsc::{channel, Sender, Receiver, SyncSender, TryRecvError, sync_channel};
 
 pub enum Control {
@@ -405,8 +404,7 @@ extern fn on_group_audio(_: *mut Tox, group_id: c_int, peer_id: c_int,
                          sample_rate: c_uint, userdata: *mut c_void) {
     let internal = get_int!(userdata);
     let pcm = unsafe {
-        CVec::new(pcm as *mut _, samples as uint * channels as uint).as_mut_slice()
-                                                                    .to_vec()
+        slice::from_raw_buf(&pcm, samples as uint * channels as uint).to_vec()
     };
     let bit = AudioBit {
         pcm: pcm,
