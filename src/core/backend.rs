@@ -676,7 +676,7 @@ impl Backend {
             control: control_recv,
             av: None,
         };
-        std::thread::Thread::spawn(move || backend.run()).detach();
+        std::thread::Thread::spawn(move || backend.run());
         Some((control_send, event_recv))
     }
 
