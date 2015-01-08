@@ -1,4 +1,3 @@
-#![feature(globs)]
 extern crate tox;
 extern crate libc;
 
@@ -63,13 +62,13 @@ fn main() {
                 ReadReceipt(..)         => println!("ReadReceipt(..)         "),
                 ConnectionStatusVar(..) => println!("ConnectionStatusVar(..) "),
                 GroupInvite(id, ty, data)  => {
-                    println!("GroupInvite(_, {}, _)         ", ty);
+                    println!("GroupInvite(_, {:?}, _)         ", ty);
                     match ty {
                         GroupchatType::Text => tox.join_groupchat(id, data).unwrap(),
                         GroupchatType::Av => av.join_av_groupchat(id, data).unwrap(),
                     };
                 },
-                GroupMessage(_, _, msg) => println!("GroupMessage(_, _, {})", msg),
+                GroupMessage(_, _, msg) => println!("GroupMessage(_, _, {:?})", msg),
                 GroupNamelistChange(gnum, pnum, change) => {
                     println!("GroupNamelistChange(..) ");
                     if change == ChatChange::PeerDel {
@@ -115,7 +114,7 @@ mod alsa {
     use tox::av::{AudioBit};
 
     pub const RATE: u32 = 48000;
-    pub const CHANNELS: u8 = 2;
+    pub const CHANNELS: u8 = 1;
 
     #[repr(C)]
     pub struct snd_pcm_t;
@@ -160,6 +159,7 @@ mod alsa {
     pub fn write(p: *mut snd_pcm_t, bit: &AudioBit) -> Option<()> {
         unsafe {
             if bit.sample_rate != RATE || bit.channels != CHANNELS {
+                println!("sample rate {} channels {}", bit.sample_rate, bit.channels);
                 return None;
             }
             let e = snd_pcm_writei(p, bit.pcm.as_ptr() as *const c_void,
@@ -169,6 +169,7 @@ mod alsa {
                     snd_pcm_prepare(p);
                     Some(())
                 } else {
+                    puts(snd_strerror(e as c_int));
                     None
                 }
             } else {
