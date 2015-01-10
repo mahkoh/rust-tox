@@ -124,6 +124,7 @@ macro_rules! forward {
 }
 
 impl Av {
+    #[inline]
     pub fn new(tox: *mut Tox, max_calls: i32, send_end: SyncSender<()>) -> Option<Av> {
         let (ctrl, events) = match backend::Backend::new(tox, max_calls, send_end) {
             Some(x) => x,
@@ -135,93 +136,113 @@ impl Av {
         })
     }
 
+    #[inline]
     pub fn call(&self, friend_id: i32, settings: Option<Box<CallSettings>>,
                 timeout: i32) -> Result<i32, i32> {
         forward!(self, backend::Control::Call, (friend_id, settings, timeout), ->)
     }
 
+    #[inline]
     pub fn hangup(&self, call_id: i32) -> Result<(), i32> {
         forward!(self, backend::Control::Hangup, (call_id), ->)
     }
 
+    #[inline]
     pub fn answer(&self, call_id: i32,
                   settings: Option<Box<CallSettings>>) -> Result<(), i32> {
         forward!(self, backend::Control::Answer, (call_id, settings), ->)
     }
 
+    #[inline]
     pub fn reject(&self, call_id: i32) -> Result<(), i32> {
         forward!(self, backend::Control::Reject, (call_id), ->)
     }
 
+    #[inline]
     pub fn cancel(&self, call_id: i32, peer_id: i32) -> Result<(), i32> {
         forward!(self, backend::Control::Cancel, (call_id, peer_id), ->)
     }
 
+    #[inline]
     pub fn change_settings(&self, call_id: i32,
                            settings: Option<Box<CallSettings>>) -> Result<(), i32>{
         forward!(self, backend::Control::ChangeSettings, (call_id, settings), ->)
     }
 
+    #[inline]
     pub fn stop_call(&self, call_id: i32) -> Result<(), i32> {
         forward!(self, backend::Control::StopCall, (call_id), ->)
     }
 
+    #[inline]
     pub fn prepare_transmission(&self, call_id: i32,
                                 support_video: bool) -> Result<(), i32>{
         forward!(self, backend::Control::PrepareTransmission, (call_id, support_video), ->)
     }
 
+    #[inline]
     pub fn kill_transmission(&self, call_id: i32) -> Result<(), i32> {
         forward!(self, backend::Control::KillTransmission, (call_id), ->)
     }
 
+    #[inline]
     pub fn prepare_audio_frame(&self, call_id: i32, dest: Vec<u8>,
                                src: Vec<i16>) -> Result<(Vec<u8>, Vec<i16>), (i32, Vec<u8>, Vec<i16>)> {
         forward!(self, backend::Control::PrepareAudioFrame, (call_id, dest, src), ->)
     }
 
+    #[inline]
     pub fn send_audio(&self, call_id: i32,
                       src: Vec<u8>) -> Result<Vec<u8>, (i32, Vec<u8>)> {
         forward!(self, backend::Control::SendAudio, (call_id, src), ->)
     }
 
+    #[inline]
     pub fn get_peer_call_settings(&self, call_id: i32,
                                   peer_id: i32) -> Result<Box<CallSettings>, i32> {
         forward!(self, backend::Control::GetPeerCallSettings, (call_id, peer_id), ->)
     }
 
+    #[inline]
     pub fn get_peer_id(&self, call_id: i32, peer_id: i32) -> Result<i32, i32> {
         forward!(self, backend::Control::GetPeerId, (call_id, peer_id), ->)
     }
 
+    #[inline]
     pub fn get_call_state(&self, call_id: i32) -> CallState {
         forward!(self, backend::Control::GetCallState, (call_id), ->)
     }
 
+    #[inline]
     pub fn capability_supported(&self, call_id: i32,
                                 capability: Capability) -> Result<bool, i32> {
         forward!(self, backend::Control::CapabilitySupported, (call_id, capability), ->)
     }
 
+    #[inline]
     pub fn get_active_count(&self) -> Result<uint, i32> {
         forward!(self, backend::Control::GetActiveCount, ->)
     }
 
+    #[inline]
     pub fn add_av_groupchat(&self) -> Result<i32, i32> {
         forward!(self, backend::Control::AddAvGroupchat, ->)
     }
 
+    #[inline]
     pub fn join_av_groupchat(&self, friend_id: i32,
                              data: Vec<u8>) -> Result<i32, i32> {
         forward!(self, backend::Control::JoinAvGroupchat, (friend_id, data), ->)
     }
 
+    #[inline]
     pub fn group_send_audio(&self, group_id: i32,
                             bit: AudioBit) -> Result<AudioBit, (i32, AudioBit)> {
         forward!(self, backend::Control::GroupSendAudio, (group_id, bit), ->)
     }
 
     /// Return an events receiver
+    #[inline]
     pub fn events(&self) -> &Receiver<Event> {
         &self.events
     }
