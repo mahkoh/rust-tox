@@ -4,7 +4,7 @@ pub fn split_message(mut m: &str) -> Vec<&str> {
     let mut ret = vec!();
     let mut last_whitespace = false;
     while m.len() > MAX_MESSAGE_LENGTH {
-        let mut end = 0u;
+        let mut end = 0;
         for (i, c) in m.char_indices() {
             if c.is_whitespace() {
                 if !last_whitespace {

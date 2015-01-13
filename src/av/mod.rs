@@ -94,7 +94,7 @@ pub struct AudioBit {
 
 impl AudioBit {
     pub fn validate(&self) -> bool {
-        self.pcm.len() == self.samples as uint * self.channels as uint
+        self.pcm.len() == self.samples as usize * self.channels as usize
     }
 }
 
@@ -220,7 +220,7 @@ impl Av {
     }
 
     #[inline]
-    pub fn get_active_count(&self) -> Result<uint, i32> {
+    pub fn get_active_count(&self) -> Result<usize, i32> {
         forward!(self, backend::Control::GetActiveCount, ->)
     }
 

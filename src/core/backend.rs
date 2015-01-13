@@ -139,7 +139,7 @@ impl Backend {
         };
         match res {
             -1 => Err(()),
-            _ => Ok(box client),
+            _ => Ok(Box::new(client)),
         }
     }
 
@@ -203,7 +203,7 @@ impl Backend {
         let mut name = Vec::with_capacity(MAX_NAME_LENGTH);
         let res = unsafe {
             let len = tox_get_self_name(&*self.raw, name.as_mut_ptr());
-            name.set_len(len as uint);
+            name.set_len(len as usize);
             len
         };
         match res {
@@ -220,7 +220,7 @@ impl Backend {
         let res = unsafe {
             let len = tox_get_name(&*self.raw, friendnumber, name.as_mut_ptr());
             // len might be -1 but it doesn't matter if we don't return name.
-            name.set_len(len as uint);
+            name.set_len(len as usize);
             len
         };
         match res {
@@ -256,11 +256,11 @@ impl Backend {
             -1 => return Err(()),
             _ => size,
         };
-        let mut status = Vec::with_capacity(size as uint);
+        let mut status = Vec::with_capacity(size as usize);
         let size = unsafe {
             let len = tox_get_status_message(&*self.raw, friendnumber, status.as_mut_ptr(),
                                              size as u32);
-            status.set_len(len as uint);
+            status.set_len(len as usize);
             len
         };
         match size {
@@ -278,10 +278,10 @@ impl Backend {
             -1 => return Err(()),
             _ => size as u32,
         };
-        let mut status = Vec::with_capacity(size as uint);
+        let mut status = Vec::with_capacity(size as usize);
         let size = unsafe {
             let len = tox_get_self_status_message(&*self.raw, status.as_mut_ptr(), size);
-            status.set_len(len as uint);
+            status.set_len(len as usize);
             len
         };
         match size {
@@ -346,10 +346,10 @@ impl Backend {
 
     fn get_friendlist(&mut self) -> Vec<i32> {
         let size = self.count_friendlist();
-        let mut vec = Vec::with_capacity(size as uint);
+        let mut vec = Vec::with_capacity(size as usize);
         unsafe {
             let len = tox_get_friendlist(&*self.raw, vec.as_mut_ptr(), size);
-            vec.set_len(len as uint);
+            vec.set_len(len as usize);
         }
         vec
     }
@@ -382,7 +382,7 @@ impl Backend {
         let len = unsafe {
             let len = tox_group_peername(&*self.raw, groupnumber, peernumber,
                                          vec.as_mut_ptr());
-            vec.set_len(len as uint);
+            vec.set_len(len as usize);
             len
         };
         match len {
@@ -445,7 +445,7 @@ impl Backend {
     fn group_get_names(&mut self,
                            groupnumber: i32) -> Result<Vec<Option<String>>, ()> {
         let num = match self.group_number_peers(groupnumber) {
-            Ok(n) => n as uint,
+            Ok(n) => n as usize,
             _ => return Err(()),
         };
         let mut names = Vec::with_capacity(num);
@@ -453,16 +453,16 @@ impl Backend {
         let len = unsafe {
             let len = tox_group_get_names(&*self.raw, groupnumber, names.as_mut_ptr(),
                                           lengths.as_mut_ptr(), num as u16);
-            names.set_len(len as uint);
-            lengths.set_len(len as uint);
+            names.set_len(len as usize);
+            lengths.set_len(len as usize);
             len
         };
         if len == -1 {
             return Err(());
         }
-        let mut real_names = Vec::with_capacity(len as uint);
+        let mut real_names = Vec::with_capacity(len as usize);
         for (name, &length) in names.iter().zip(lengths.iter()) {
-            match std::str::from_utf8(name.slice_to(length as uint)) {
+            match std::str::from_utf8(name.slice_to(length as usize)) {
                 Ok(s) => real_names.push(Some(s.to_string())),
                 _ => real_names.push(None),
             }
@@ -476,10 +476,10 @@ impl Backend {
 
     fn get_chatlist(&mut self) -> Vec<i32> {
         let num = unsafe { tox_count_chatlist(&*self.raw) };
-        let mut vec = Vec::with_capacity(num as uint);
+        let mut vec = Vec::with_capacity(num as usize);
         unsafe {
             let num = tox_get_chatlist(&*self.raw, vec.as_mut_ptr(), num);
-            vec.set_len(num as uint);
+            vec.set_len(num as usize);
         }
         vec
     }
@@ -510,7 +510,7 @@ impl Backend {
         if res == -1 {
             return Err(());
         }
-        unsafe { data.set_len(length as uint); }
+        unsafe { data.set_len(length as usize); }
         data.shrink_to_fit();
         let format = match format as c_uint {
             TOX_AVATAR_FORMAT_NONE => AvatarFormat::None,
@@ -646,7 +646,7 @@ impl Backend {
             return None;
         }
         let (event_send, event_recv) = channel();
-        let mut internal = box Internal { stop: false, events: event_send };
+        let mut internal = Box::new(Internal { stop: false, events: event_send });
 
         unsafe {
             let ip = &mut *internal as *mut _ as *mut c_void;
@@ -832,7 +832,7 @@ impl Backend {
     }
 
     fn save(&mut self) -> Vec<u8> {
-        let size = unsafe { tox_size(&*self.raw) as uint };
+        let size = unsafe { tox_size(&*self.raw) as usize };
         let mut vec = Vec::with_capacity(size);
         unsafe {
             tox_save(&*self.raw, vec.as_mut_ptr());
@@ -876,7 +876,7 @@ macro_rules! send_or_stop {
 macro_rules! parse_string {
     ($p:ident, $l:ident) => {
         {
-            let slice = to_slice($p as *const u8, $l as uint);
+            let slice = to_slice($p as *const u8, $l as usize);
             match std::str::from_utf8(slice) {
                 Ok(s) => s.to_string(),
                 _ => return,
@@ -885,7 +885,7 @@ macro_rules! parse_string {
     }
 }
 
-fn to_slice<'a, T>(p: *const T, l: uint) -> &'a [T] {
+fn to_slice<'a, T>(p: *const T, l: usize) -> &'a [T] {
     unsafe { transmute(Slice { data: p, len: l }) }
 }
 
@@ -894,7 +894,7 @@ extern fn on_friend_request(_: *mut Tox, public_key: *const u8, data: *const u8,
     let internal = get_int!(internal);
     let msg = parse_string!(data, length);
     let id = ClientId { raw: unsafe { ptr::read(public_key as *const _) } };
-    send_or_stop!(internal, FriendRequest(box id, msg));
+    send_or_stop!(internal, FriendRequest(Box::new(id), msg));
 }
 
 extern fn on_friend_message(_: *mut Tox, friendnumber: i32, msg: *const u8, length: u16,
@@ -963,7 +963,7 @@ extern fn on_group_invite(_: *mut Tox, friendnumber: i32, ty: u8, data: *const u
                           length: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
     let data = unsafe {
-        slice::from_raw_buf(&data, length as uint).to_vec()
+        slice::from_raw_buf(&data, length as usize).to_vec()
     };
     let ty = match ty as c_uint {
         TOX_GROUPCHAT_TYPE_TEXT => GroupchatType::Text,
@@ -1003,7 +1003,7 @@ extern fn on_file_send_request(_: *mut Tox, friendnumber: i32, filenumber: u8,
                                filesize: u64, filename: *const u8, len: u16,
                                internal: *mut c_void) {
     let internal = get_int!(internal);
-    let slice = to_slice(filename as *const u8, len as uint);
+    let slice = to_slice(filename as *const u8, len as usize);
     let path = match Path::new_opt(slice) {
         Some(p) => match p.filename() {
             Some(f) => f.to_vec(),
@@ -1031,14 +1031,14 @@ extern fn on_file_control(_: *mut Tox, friendnumber: i32, receive_send: u8,
         0 => Receiving,
         _ => return,
     };
-    let data = to_slice(data, len as uint).to_vec();
+    let data = to_slice(data, len as usize).to_vec();
     send_or_stop!(internal, FileControl(friendnumber, tt, filenumber, ty, data));
 }
 
 extern fn on_file_data(_: *mut Tox, friendnumber: i32, filenumber: u8, data: *const u8,
                        len: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
-    let data = to_slice(data, len as uint).to_vec();
+    let data = to_slice(data, len as usize).to_vec();
     send_or_stop!(internal, FileData(friendnumber, filenumber, data));
 }
 
@@ -1063,6 +1063,6 @@ extern fn on_avatar_data(_: *mut Tox, friendnumber: i32, format: u8, hash: *mut 
         _ => return,
     };
     let hash = unsafe { ptr::read(hash as *const u8 as *const _) };
-    let data = unsafe { slice::from_raw_mut_buf(&data, datalen as uint).to_vec() };
+    let data = unsafe { slice::from_raw_mut_buf(&data, datalen as usize).to_vec() };
     send_or_stop!(internal, AvatarData(friendnumber, format, hash, data));
 }

@@ -24,7 +24,7 @@ pub enum Control {
     GetPeerId(i32, i32, Sender<Result<i32, i32>>),
     GetCallState(i32, Sender<CallState>),
     CapabilitySupported(i32, Capability, Sender<Result<bool, i32>>),
-    GetActiveCount(Sender<Result<uint, i32>>),
+    GetActiveCount(Sender<Result<usize, i32>>),
     AddAvGroupchat(Sender<Result<i32, i32>>),
     JoinAvGroupchat(i32, Vec<u8>, Sender<Result<i32, i32>>),
     GroupSendAudio(i32, AudioBit, Sender<Result<AudioBit, (i32, AudioBit)>>),
@@ -159,7 +159,7 @@ impl Backend {
             toxav_get_peer_csettings(self.raw, call_id, peer_id as c_int, &mut settings)
         };
         match res {
-            0 => Ok(box settings),
+            0 => Ok(Box::new(settings)),
             _ => Err(res),
         }
     }
@@ -188,10 +188,10 @@ impl Backend {
         }
     }
 
-    pub fn get_active_count(&mut self) -> Result<uint, i32> {
+    pub fn get_active_count(&mut self) -> Result<usize, i32> {
         let res = unsafe { toxav_get_active_count(self.raw) };
         if res >= 0 {
-            Ok(res as uint)
+            Ok(res as usize)
         } else {
             Err(res)
         }
@@ -246,7 +246,7 @@ impl Backend {
             return None;
         }
         let (event_send, event_recv) = channel();
-        let mut internal = box Internal { stop: false, events: event_send };
+        let mut internal = Box::new(Internal { stop: false, events: event_send });
 
         unsafe {
             let ip = &mut *internal as *mut _ as *mut c_void;
@@ -404,7 +404,7 @@ extern fn on_group_audio(_: *mut Tox, group_id: c_int, peer_id: c_int,
                          sample_rate: c_uint, userdata: *mut c_void) {
     let internal = get_int!(userdata);
     let pcm = unsafe {
-        slice::from_raw_buf(&pcm, samples as uint * channels as uint).to_vec()
+        slice::from_raw_buf(&pcm, samples as usize * channels as usize).to_vec()
     };
     let bit = AudioBit {
         pcm: pcm,

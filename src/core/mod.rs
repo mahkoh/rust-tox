@@ -41,14 +41,14 @@ use av;
 mod backend;
 pub mod ll;
 
-pub const MAX_NAME_LENGTH:              uint = 128u;
-pub const MAX_MESSAGE_LENGTH:           uint = 1368u;
-pub const MAX_STATUSMESSAGE_LENGTH:     uint = 1007u;
-pub const TOX_MAX_FRIENDREQUEST_LENGTH: uint = 1016u;
-pub const ID_CLIENT_SIZE:               uint = 32u;
-pub const ADDRESS_SIZE:                 uint = ID_CLIENT_SIZE + 6u;
-pub const AVATAR_MAX_DATA_LENGTH:       uint = 16384u;
-pub const HASH_LENGTH:                  uint = 32u;
+pub const MAX_NAME_LENGTH:              usize = 128us;
+pub const MAX_MESSAGE_LENGTH:           usize = 1368us;
+pub const MAX_STATUSMESSAGE_LENGTH:     usize = 1007us;
+pub const TOX_MAX_FRIENDREQUEST_LENGTH: usize = 1016us;
+pub const ID_CLIENT_SIZE:               usize = 32us;
+pub const ADDRESS_SIZE:                 usize = ID_CLIENT_SIZE + 6us;
+pub const AVATAR_MAX_DATA_LENGTH:       usize = 16384us;
+pub const HASH_LENGTH:                  usize = 32us;
 
 #[derive(Copy, Clone, Eq, PartialEq, Show)]
 #[repr(u8)]
@@ -128,7 +128,7 @@ impl Address {
         for (i, &x) in self.id.raw.iter().enumerate() {
             check[i % 2] ^= x;
         }
-        for i in range(0u, 4) {
+        for i in range(0us, 4) {
             check[(ID_CLIENT_SIZE + i) % 2] ^= self.nospam[i];
         }
         check
@@ -183,8 +183,8 @@ fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
     if s.len() != 2*buf.len() {
         return Err(());
     }
-    for i in range(0u, buf.len()) {
-        for j in range(0u, 2) {
+    for i in range(0us, buf.len()) {
+        for j in range(0us, 2) {
             buf[i] = (buf[i] << 4) + match s.as_bytes()[2*i + j] as char {
                 c @ '0' ... '9' => (c as u8) - ('0' as u8),
                 c @ 'a' ... 'f' => (c as u8) - ('a' as u8) + 10,
@@ -331,7 +331,7 @@ impl ToxOptions {
                 ipv6enabled: 0,
                 udp_disabled: 0,
                 proxy_type: 0,
-                proxy_address: [0; 256u],
+                proxy_address: [0; 256us],
                 proxy_port: 0,
             }
         }
