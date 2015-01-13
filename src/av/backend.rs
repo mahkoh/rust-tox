@@ -200,7 +200,7 @@ impl Backend {
     pub fn add_av_groupchat(&mut self) -> Result<i32, i32> {
         let ip = &mut *self.internal as *mut _ as *mut c_void;
         let ret = unsafe {
-            toxav_add_av_groupchat(self.raw_tox, Some(on_group_audio as ToxAudioCallback),
+            toxav_add_av_groupchat(self.raw_tox, Some(on_group_audio),
                                    ip)
         };
         match ret {
@@ -214,8 +214,7 @@ impl Backend {
         let ip = &mut *self.internal as *mut _ as *mut c_void;
         let ret = unsafe {
             toxav_join_av_groupchat(self.raw_tox, friend_id, data.as_ptr(),
-                                    data.len() as u16,
-                                    Some(on_group_audio as ToxAudioCallback), ip)
+                                    data.len() as u16, Some(on_group_audio), ip)
         };
         match ret {
             -1 => Err(ret),
@@ -252,7 +251,7 @@ impl Backend {
             let ip = &mut *internal as *mut _ as *mut c_void;
             macro_rules! rcsc {
                 ($func:ident, $id:ident) => {
-                    toxav_register_callstate_callback(av, Some($func as ToxAVCallback),
+                    toxav_register_callstate_callback(av, Some($func),
                                                       ToxAvCallbackId::$id, ip);
                 }
             };
@@ -266,7 +265,7 @@ impl Backend {
             rcsc!( on_peer_timeout    , av_OnPeerTimeout  );
             rcsc!( on_peer_cs_change  , av_OnPeerCSChange );
             rcsc!( on_self_cs_change  , av_OnSelfCSChange );
-            toxav_register_audio_callback(av, Some(on_audio as ToxAvAudioCallback), ip);
+            toxav_register_audio_callback(av, Some(on_audio), ip);
         }
         let (control_send, control_recv) = sync_channel(1);
         let backend = Backend {
