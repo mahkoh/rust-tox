@@ -462,7 +462,7 @@ impl Backend {
         }
         let mut real_names = Vec::with_capacity(len as usize);
         for (name, &length) in names.iter().zip(lengths.iter()) {
-            match std::str::from_utf8(name.slice_to(length as usize)) {
+            match std::str::from_utf8(&name[..length as usize]) {
                 Ok(s) => real_names.push(Some(s.to_string())),
                 _ => real_names.push(None),
             }

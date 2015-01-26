@@ -50,14 +50,14 @@ pub const ADDRESS_SIZE:                 usize = ID_CLIENT_SIZE + 6us;
 pub const AVATAR_MAX_DATA_LENGTH:       usize = 16384us;
 pub const HASH_LENGTH:                  usize = 32us;
 
-#[derive(Copy, Clone, Eq, PartialEq, Show)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(u8)]
 pub enum AvatarFormat {
     None = ll::TOX_AVATAR_FORMAT_NONE as u8,
     PNG = ll::TOX_AVATAR_FORMAT_PNG as u8,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Show)]
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(u8)]
 pub enum GroupchatType {
     Text = ll::TOX_GROUPCHAT_TYPE_TEXT as u8,
@@ -135,7 +135,7 @@ impl Address {
     }
 }
 
-impl fmt::Show for Address {
+impl fmt::Debug for Address {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(self.id.fmt(fmt));
         try!(write!(fmt, "{:02X}", self.nospam[0]));
@@ -159,14 +159,14 @@ impl FromStr for Address {
         let mut nospam = [0u8; 4];
         let mut check  = [0u8; 2];
 
-        if parse_hex(s.slice(0, 2*ID_CLIENT_SIZE), id.as_mut_slice()).is_err() {
+        if parse_hex(&s[0..2*ID_CLIENT_SIZE], id.as_mut_slice()).is_err() {
             return None;
         }
-        if parse_hex(s.slice(2*ID_CLIENT_SIZE, 2*ID_CLIENT_SIZE+8),
+        if parse_hex(&s[2*ID_CLIENT_SIZE..2*ID_CLIENT_SIZE+8],
                              nospam.as_mut_slice()).is_err() {
             return None;
         }
-        if parse_hex(s.slice(2*ID_CLIENT_SIZE+8, 2*ADDRESS_SIZE),
+        if parse_hex(&s[2*ID_CLIENT_SIZE+8..2*ADDRESS_SIZE],
                              check.as_mut_slice()).is_err() {
             return None;
         }
@@ -204,7 +204,7 @@ pub struct ClientId {
     pub raw: [u8; ID_CLIENT_SIZE],
 }
 
-impl fmt::Show for ClientId {
+impl fmt::Debug for ClientId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for &n in self.raw.iter() {
             try!(write!(fmt, "{:02X}", n));

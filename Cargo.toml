@@ -11,3 +11,6 @@ name = "bot"
 
 [[example]]
 name = "test"
+
+[dependencies.rest_easy]
+git = "https://github.com/cmr/rest_easy"
