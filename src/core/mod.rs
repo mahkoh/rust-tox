@@ -135,7 +135,7 @@ impl Address {
     }
 }
 
-impl fmt::Debug for Address {
+impl fmt::Display for Address {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(self.id.fmt(fmt));
         try!(write!(fmt, "{:02X}", self.nospam[0]));
@@ -204,7 +204,7 @@ pub struct ClientId {
     pub raw: [u8; ID_CLIENT_SIZE],
 }
 
-impl fmt::Debug for ClientId {
+impl fmt::Display for ClientId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for &n in self.raw.iter() {
             try!(write!(fmt, "{:02X}", n));
