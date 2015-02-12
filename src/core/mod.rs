@@ -150,9 +150,11 @@ impl fmt::Display for Address {
 }
 
 impl FromStr for Address {
-    fn from_str(s: &str) -> Option<Address> {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Address, ()> {
         if s.len() != 2 * ADDRESS_SIZE {
-            return None;
+            return Err(());
         }
 
         let mut id     = [0u8; 32];
@@ -160,22 +162,22 @@ impl FromStr for Address {
         let mut check  = [0u8; 2];
 
         if parse_hex(&s[0..2*ID_CLIENT_SIZE], id.as_mut_slice()).is_err() {
-            return None;
+            return Err(());
         }
         if parse_hex(&s[2*ID_CLIENT_SIZE..2*ID_CLIENT_SIZE+8],
                              nospam.as_mut_slice()).is_err() {
-            return None;
+            return Err(());
         }
         if parse_hex(&s[2*ID_CLIENT_SIZE+8..2*ADDRESS_SIZE],
                              check.as_mut_slice()).is_err() {
-            return None;
+            return Err(());
         }
 
         let addr = Address { id: ClientId { raw: id }, nospam: nospam, checksum: check };
         if addr.checksum().as_slice() != check.as_slice() {
-            return None;
+            return Err(());
         }
-        Some(addr)
+        Ok(addr)
     }
 }
 
@@ -214,17 +216,19 @@ impl fmt::Display for ClientId {
 }
 
 impl FromStr for ClientId {
-    fn from_str(s: &str) -> Option<ClientId> {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<ClientId, ()> {
         if s.len() != 2 * ID_CLIENT_SIZE {
-            return None;
+            return Err(());
         }
 
         let mut id = [0u8; ID_CLIENT_SIZE];
 
         if parse_hex(s, id.as_mut_slice()).is_err() {
-            return None;
+            return Err(());
         }
-        Some(ClientId { raw: id })
+        Ok(ClientId { raw: id })
     }
 }
 

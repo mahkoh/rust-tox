@@ -1,8 +1,8 @@
-#![feature(phase,globs)]
+// Ded
+
+#![feature(globs)]
 
 extern crate regex;
-#[phase(plugin)]
-extern crate regex_macros;
 extern crate tox;
 
 use tox::core::*;
@@ -21,12 +21,12 @@ fn main() {
 
     let bootstrap_key = BOOTSTRAP_KEY.parse().unwrap();
     tox.bootstrap_from_address(BOOTSTRAP_IP.to_string(), BOOTSTRAP_PORT, 
-                               box bootstrap_key).unwrap();
+                               Box::new(bootstrap_key)).unwrap();
 
     let groupchat_addr = GROUPCHAT_ADDR.parse().unwrap();
-    let groupbot_id = tox.add_friend(box groupchat_addr, "Hello".to_string()).ok().unwrap();
+    let groupbot_id = tox.add_friend(Box::new(groupchat_addr), "Hello".to_string()).ok().unwrap();
 
-    let pattern = regex!(r"^(\[.+?\]: )?%(\w+)");
+    let pattern = regex::Regex::new(r"^(\[.+?\]: )?%(\w+)");
     for ev in tox.events().iter() {
         match ev {
             StatusMessage(id, _) if id == groupbot_id => {

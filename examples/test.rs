@@ -1,3 +1,5 @@
+#![feature(libc, std_misc)]
+
 extern crate tox;
 extern crate libc;
 
@@ -29,12 +31,12 @@ fn main() {
 
     for &(ip, port, id) in ids.iter() {
         let id = id.parse().unwrap();
-        tox.bootstrap_from_address(ip.to_string(), port, box id).unwrap();
+        tox.bootstrap_from_address(ip.to_string(), port, Box::new(id)).unwrap();
     }
 
     let groupbot = "56A1ADE4B65B86BCD51CC73E2CD4E542179F47959FE3E0E21B4B0ACDADE51855D34D34D37CB5".parse().unwrap();
     tox.set_name("test".to_string()).ok().unwrap();
-    tox.add_friend(box groupbot, "Hello".to_string()).ok().unwrap();
+    tox.add_friend(Box::new(groupbot), "Hello".to_string()).ok().unwrap();
 
     let sel = Select::new();
     let mut tox_rx = sel.handle(tox.events());

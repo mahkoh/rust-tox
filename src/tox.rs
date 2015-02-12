@@ -1,12 +1,11 @@
-#![feature(slicing_syntax, plugin)]
+#![feature(slicing_syntax, plugin, collections, io, core, std_misc, path, libc)]
 #![crate_type = "lib"]
 #![crate_name = "tox"]
-#![allow(non_camel_case_types, unstable)]
+#![allow(non_camel_case_types)]
+// #![plugin(rest_easy)]
 
 extern crate libc;
 extern crate "core" as rust_core;
-
-#[plugin] #[no_link] extern crate rest_easy;
 
 pub mod core;
 pub mod av;

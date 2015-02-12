@@ -1,7 +1,7 @@
 use std;
 use std::{ptr, slice};
 use std::sync::mpsc::{channel, Sender, TryRecvError, sync_channel, Receiver, SyncSender};
-use std::io::{timer};
+use std::old_io::{timer};
 use std::num::{Int};
 use std::raw::{Slice};
 use std::mem::{transmute};
@@ -963,7 +963,7 @@ extern fn on_group_invite(_: *mut Tox, friendnumber: i32, ty: u8, data: *const u
                           length: u16, internal: *mut c_void) {
     let internal = get_int!(internal);
     let data = unsafe {
-        slice::from_raw_buf(&data, length as usize).to_vec()
+        slice::from_raw_parts(data, length as usize).to_vec()
     };
     let ty = match ty as c_uint {
         TOX_GROUPCHAT_TYPE_TEXT => GroupchatType::Text,
@@ -1063,6 +1063,6 @@ extern fn on_avatar_data(_: *mut Tox, friendnumber: i32, format: u8, hash: *mut 
         _ => return,
     };
     let hash = unsafe { ptr::read(hash as *const u8 as *const _) };
-    let data = unsafe { slice::from_raw_mut_buf(&data, datalen as usize).to_vec() };
+    let data = unsafe { slice::from_raw_parts_mut(data, datalen as usize).to_vec() };
     send_or_stop!(internal, AvatarData(friendnumber, format, hash, data));
 }
