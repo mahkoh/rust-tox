@@ -1,11 +1,11 @@
-use std::sync::mpsc::{channel, Receiver, SyncSender};
-
 use core::ll::{Tox};
+
+use comm::{spsc};
 
 pub mod ll;
 mod backend;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Event {
     Invite(i32),
     Ringing(i32),
@@ -20,15 +20,17 @@ pub enum Event {
     GroupAudio(i32, i32, AudioBit),
 }
 
+unsafe impl Send for Event { }
+
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone, Debug)]
 pub enum CallType {
     Audio = 192,
     Video,
 }
 
 #[repr(C)]
-#[derive(Copy, FromPrimitive)]
+#[derive(Copy, Clone, Debug, FromPrimitive)]
 pub enum CallState {
     NonExistent = -1,
     Inviting,
@@ -39,7 +41,7 @@ pub enum CallState {
 }
 
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone, Debug)]
 pub enum Error {
     ErrorNone                   = 0,
     ErrorUnknown                = -1,
@@ -61,7 +63,7 @@ pub enum Error {
 }
 
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone, Debug)]
 pub enum Capability {
     AudioEncoding = 1 << 0,
     AudioDecoding = 1 << 1,
@@ -70,7 +72,7 @@ pub enum Capability {
 }
 
 #[repr(C)]
-#[derive(Copy)]
+#[derive(Copy, Clone, Debug)]
 pub struct CallSettings {
     pub call_type: CallType,
 
@@ -84,7 +86,7 @@ pub struct CallSettings {
     pub audio_channels: u32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct AudioBit {
     pub pcm: Vec<i16>,
     pub samples: u32,
@@ -98,21 +100,23 @@ impl AudioBit {
     }
 }
 
-pub struct Av {
-    pub events: Receiver<Event>,
-    control: SyncSender<backend::Control>,
+pub struct AvControl {
+    control: spsc::one_space::Producer<backend::Control>,
 }
+
+type ControlProducer = spsc::one_space::Producer<backend::Control>;
+pub type AvEvents = spsc::bounded::Consumer<Event>;
 
 macro_rules! forward {
     ($slf:expr, $name:expr, ($($pp:ident),+), ->) => {{
-            let (snd, rcv) = channel();
-            $slf.control.send($name($($pp),*, snd)).unwrap();
-            rcv.recv().unwrap()
+            let (snd, rcv) = spsc::one_space::new();
+            $slf.control.send($name($($pp),*, snd)).map_err(|e|e.1).unwrap();
+            rcv.recv_sync().unwrap()
     }};
     ($slf:expr, $name:expr, ->) => {{
-            let (snd, rcv) = channel();
-            $slf.control.send($name(snd)).unwrap();
-            rcv.recv().unwrap()
+            let (snd, rcv) = spsc::one_space::new();
+            $slf.control.send($name(snd)).map_err(|e|e.1).unwrap();
+            rcv.recv_sync().unwrap()
     }};
     ($slf:expr, $name:expr, ($($pp:ident),+)) => {{
             $slf.control.send($name($($pp),*)).unwrap()
@@ -123,17 +127,14 @@ macro_rules! forward {
 
 }
 
-impl Av {
+impl AvControl {
     #[inline]
-    pub fn new(tox: *mut Tox, max_calls: i32, send_end: SyncSender<()>) -> Option<Av> {
-        let (ctrl, events) = match backend::Backend::new(tox, max_calls, send_end) {
-            Some(x) => x,
+    pub fn new(tox: *mut Tox, max_calls: i32, send_end: spsc::one_space::Producer<()>)
+                                -> Option<(AvControl, AvEvents)> {
+        match backend::Backend::new(tox, max_calls, send_end) {
+            Some((ctrl, events)) => Some((AvControl { control: ctrl }, events)),
             None => return None,
-        };
-        Some(Av {
-            events: events,
-            control: ctrl,
-        })
+        }
     }
 
     #[inline]
@@ -239,11 +240,5 @@ impl Av {
     pub fn group_send_audio(&self, group_id: i32,
                             bit: AudioBit) -> Result<AudioBit, (i32, AudioBit)> {
         forward!(self, backend::Control::GroupSendAudio, (group_id, bit), ->)
-    }
-
-    /// Return an events receiver
-    #[inline]
-    pub fn events(&self) -> &Receiver<Event> {
-        &self.events
     }
 }

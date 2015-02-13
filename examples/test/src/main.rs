@@ -1,17 +1,19 @@
-#![feature(libc, std_misc)]
+#![feature(libc)]
 
 extern crate tox;
 extern crate libc;
+extern crate comm;
 
 use tox::core::*;
 use tox::av::Event::*;
 
-use std::sync::mpsc::{Select};
 use std::collections::{HashMap};
 
+use comm::select::{Select};
+
 fn main() {
-    let tox = Tox::new(ToxOptions::new()).unwrap();
-    let av = tox.av(2).unwrap();
+    let (core_ctrl, core_events) = ToxControl::new(ToxOptions::new()).unwrap();
+    let (av_ctrl, av_events) = core_ctrl.av(2).unwrap();
 
     let mut audiomap = HashMap::new();
 
@@ -31,25 +33,21 @@ fn main() {
 
     for &(ip, port, id) in ids.iter() {
         let id = id.parse().unwrap();
-        tox.bootstrap_from_address(ip.to_string(), port, Box::new(id)).unwrap();
+        core_ctrl.bootstrap_from_address(ip.to_string(), port, Box::new(id)).unwrap();
     }
 
     let groupbot = "56A1ADE4B65B86BCD51CC73E2CD4E542179F47959FE3E0E21B4B0ACDADE51855D34D34D37CB5".parse().unwrap();
-    tox.set_name("test".to_string()).ok().unwrap();
-    tox.add_friend(Box::new(groupbot), "Hello".to_string()).ok().unwrap();
+    core_ctrl.set_name("test".to_string()).ok().unwrap();
+    core_ctrl.add_friend(Box::new(groupbot), "Hello".to_string()).ok().unwrap();
 
     let sel = Select::new();
-    let mut tox_rx = sel.handle(tox.events());
-    let mut av_rx = sel.handle(av.events());
-    unsafe {
-        tox_rx.add();
-        av_rx.add();
-    }
+    sel.add(&core_events);
+    sel.add(&av_events);
 
     loop {
-        sel.wait();
+        sel.wait(&mut []);
 
-        while let Ok(ev) = tox.events().try_recv() {
+        while let Ok(ev) = core_events.recv_async() {
             match ev {
                 FriendRequest(..)       => println!("FriendRequest(..)       "),
                 FriendMessage(..)       => println!("FriendMessage(..)       "),
@@ -57,7 +55,7 @@ fn main() {
                 NameChange(..)          => println!("NameChange(..)          "),
                 StatusMessage(id, _)       => {
                     println!("StatusMessage(..)       ");
-                    let _ = tox.send_message(id, "invite".to_string());
+                    let _ = core_ctrl.send_message(id, "invite".to_string());
                 },
                 UserStatusVar(..)       => println!("UserStatusVar(..)       "),
                 TypingChange(..)        => println!("TypingChange(..)        "),
@@ -66,8 +64,8 @@ fn main() {
                 GroupInvite(id, ty, data)  => {
                     println!("GroupInvite(_, {:?}, _)         ", ty);
                     match ty {
-                        GroupchatType::Text => tox.join_groupchat(id, data).unwrap(),
-                        GroupchatType::Av => av.join_av_groupchat(id, data).unwrap(),
+                        GroupchatType::Text => core_ctrl.join_groupchat(id, data).unwrap(),
+                        GroupchatType::Av => av_ctrl.join_av_groupchat(id, data).unwrap(),
                     };
                 },
                 GroupMessage(_, _, msg) => println!("GroupMessage(_, _, {:?})", msg),
@@ -85,7 +83,7 @@ fn main() {
             }
         }
 
-        while let Ok(ev) = av.events().try_recv() {
+        while let Ok(ev) = av_events.recv_async() {
             match ev {
                 Invite(..)             => println!("Av::Invite(..)"),
                 Ringing(..)            => println!("Av::Ringing(..)"),

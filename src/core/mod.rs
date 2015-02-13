@@ -33,10 +33,10 @@
 
 use std::{fmt, mem};
 use std::str::{FromStr};
-use std::sync::mpsc::{channel, Receiver, SyncSender};
+use comm::{spsc};
 use rust_core::slice::{IntSliceExt};
 pub use self::Event::*;
-use av;
+use av::{AvControl, AvEvents};
 
 mod backend;
 pub mod ll;
@@ -49,6 +49,9 @@ pub const ID_CLIENT_SIZE:               usize = 32us;
 pub const ADDRESS_SIZE:                 usize = ID_CLIENT_SIZE + 6us;
 pub const AVATAR_MAX_DATA_LENGTH:       usize = 16384us;
 pub const HASH_LENGTH:                  usize = 32us;
+
+type ControlProducer = spsc::one_space::Producer<backend::Control>;
+pub type CoreEvents = spsc::bounded::Consumer<Event>;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(u8)]
@@ -65,7 +68,7 @@ pub enum GroupchatType {
 }
 
 /// Tox events enum
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Event {
     /// The first value is the client id, the second is the friend request message
     FriendRequest(Box<ClientId>, String),
@@ -110,7 +113,7 @@ pub enum Event {
 
 /// A Tox address consist of `ClientId`, nospam and checksum
 #[repr(C)]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 pub struct Address {
     id: ClientId,
     nospam: [u8; 4],
@@ -200,7 +203,7 @@ fn parse_hex(s: &str, buf: &mut [u8]) -> Result<(),()> {
 
 /// `ClientId` is the main part of tox `Address`. Other two are nospam and checksum.
 #[repr(C)]
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Debug)]
 #[allow(missing_copy_implementations)]
 pub struct ClientId {
     pub raw: [u8; ID_CLIENT_SIZE],
@@ -233,7 +236,7 @@ impl FromStr for ClientId {
 }
 
 /// Locally-calculated cryptographic hash of the avatar data
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 #[allow(missing_copy_implementations)]
 pub struct Hash {
     pub hash: [u8; HASH_LENGTH]
@@ -253,14 +256,14 @@ impl Hash {
     }
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ConnectionStatus {
     Online,
     Offline,
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum UserStatus {
     None = ll::TOX_USERSTATUS_NONE,
     Away = ll::TOX_USERSTATUS_AWAY,
@@ -268,7 +271,7 @@ pub enum UserStatus {
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ChatChange {
     PeerAdd  = ll::TOX_CHAT_CHANGE_PEER_ADD,
     PeerDel  = ll::TOX_CHAT_CHANGE_PEER_DEL,
@@ -276,7 +279,7 @@ pub enum ChatChange {
 }
 
 #[repr(u32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum ControlType {
     Accept       = ll::TOX_FILECONTROL_ACCEPT,
     Pause        = ll::TOX_FILECONTROL_PAUSE,
@@ -287,7 +290,7 @@ pub enum ControlType {
 
 /// Faerr - Friend Add Error
 #[repr(i32)]
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Faerr {
     Toolong      = ll::TOX_FAERR_TOOLONG,
     Nomessage    = ll::TOX_FAERR_NOMESSAGE,
@@ -299,7 +302,7 @@ pub enum Faerr {
     Nomem        = ll::TOX_FAERR_NOMEM,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum TransferType {
     Receiving,
     Sending,
@@ -313,13 +316,13 @@ pub enum TransferType {
 ///     let txo = ToxOptions::new().ipv6().proxy("[proxy address]", port);
 ///     let tox = Tox::new(txo);
 /// ```
-#[derive(Copy)]
+#[derive(Copy, Clone, Debug)]
 pub struct ToxOptions {
     txo: ll::Tox_Options
 }
 
 #[repr(u8)]
-#[derive(Copy)]
+#[derive(Copy, Clone, Debug)]
 pub enum ProxyType {
     None,
     Socks5,
@@ -371,33 +374,31 @@ impl ToxOptions {
     }
 }
 
-/// The main tox struct. All the control goes here.
-pub struct Tox {
-    pub events: Receiver<Event>,
-    control: SyncSender<backend::Control>,
+pub struct ToxControl {
+    control: ControlProducer,
 }
 
 macro_rules! forward {
     ($slf:expr, $name:expr, ($($pp:ident),+), ->) => {{
-            let (snd, rcv) = channel();
-            $slf.control.send($name($($pp),*, snd)).unwrap();
-            rcv.recv().unwrap()
+            let (snd, rcv) = spsc::one_space::new();
+            $slf.control.send($name($($pp),*, snd)).map_err(|e|e.1).unwrap();
+            rcv.recv_sync().unwrap()
     }};
     ($slf:expr, $name:expr, ->) => {{
-            let (snd, rcv) = channel();
-            $slf.control.send($name(snd)).unwrap();
-            rcv.recv().unwrap()
+            let (snd, rcv) = spsc::one_space::new();
+            $slf.control.send($name(snd)).map_err(|e|e.1).unwrap();
+            rcv.recv_sync().unwrap()
     }};
     ($slf:expr, $name:expr, ($($pp:ident),+)) => {{
-            $slf.control.send($name($($pp),*)).unwrap()
+            $slf.control.send($name($($pp),*)).map_err(|e|e.1).unwrap()
     }};
     ($slf:expr, $name:expr) => {
-            $slf.control.send($name).unwrap()
+            $slf.control.send($name).map_err(|e|e.1).unwrap()
     };
 
 }
 
-impl Tox {
+impl ToxControl {
     /// Get self address
     #[inline]
     pub fn get_address(&self) -> Address {
@@ -716,15 +717,11 @@ impl Tox {
 
     /// Create a new tox instance
     #[inline]
-    pub fn new(mut opts: ToxOptions) -> Option<Tox> {
-        let (ctrl, events) = match backend::Backend::new(&mut opts.txo) {
-            Some(x) => x,
-            None => return None,
-        };
-        Some(Tox {
-            events: events,
-            control: ctrl,
-        })
+    pub fn new(mut opts: ToxOptions) -> Option<(ToxControl, CoreEvents)> {
+        match backend::Backend::new(&mut opts.txo) {
+            Some((ctrl, events)) => Some((ToxControl { control: ctrl }, events)),
+            None => None,
+        }
     }
 
     /// Returns a tox data that should be saved in the tox file
@@ -739,19 +736,13 @@ impl Tox {
         forward!(self, backend::Control::Load, (data), ->)
     }
 
-    /// Return an events receiver
-    #[inline]
-    pub fn events(&self) -> &Receiver<Event> {
-        &self.events
-    }
-
     #[inline]
     pub unsafe fn raw(&self) -> *mut ll::Tox {
         forward!(self, backend::Control::Raw, ->)
     }
 
     #[inline]
-    pub fn av(&self, max_calls: i32) -> Option<av::Av> {
+    pub fn av(&self, max_calls: i32) -> Option<(AvControl, AvEvents)> {
         forward!(self, backend::Control::Av, (max_calls), ->)
     }
 }

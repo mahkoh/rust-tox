@@ -14,3 +14,6 @@ name = "test"
 
 [dependencies.rest_easy]
 git = "https://github.com/mahkoh/rest_easy"
+
+[dependencies.comm]
+git = "https://github.com/mahkoh/comm"

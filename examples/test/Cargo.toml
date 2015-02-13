@@ -1,0 +1,11 @@
+[package]
+
+name = "test"
+version = "0.0.1"
+authors = []
+
+[dependencies.tox]
+path = "../.."
+
+[dependencies.comm]
+git = "https://github.com/mahkoh/comm"

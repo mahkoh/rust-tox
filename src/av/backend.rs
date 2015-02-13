@@ -1,41 +1,44 @@
 use core::ll::{Tox};
 use av::ll::*;
-use av::{Event, CallSettings, CallState, Capability, AudioBit};
+use av::{Event, CallSettings, CallState, Capability, AudioBit, ControlProducer, AvEvents};
+
+use comm::{self, spsc};
 
 use libc::{c_void, c_int, c_uint, c_char};
 use std::mem::{transmute, zeroed};
 use std::{self, slice};
 use std::old_io::{timer};
-use std::sync::mpsc::{channel, Sender, Receiver, SyncSender, TryRecvError, sync_channel};
+
+type OneSpaceProducer<T> = spsc::one_space::Producer<T>;
 
 pub enum Control {
-    Call(i32, Option<Box<CallSettings>>, i32, Sender<Result<i32, i32>>), 
-    Hangup(i32, Sender<Result<(), i32>>),
-    Answer(i32, Option<Box<CallSettings>>, Sender<Result<(), i32>>),
-    Reject(i32, Sender<Result<(), i32>>),
-    Cancel(i32, i32, Sender<Result<(), i32>>),
-    ChangeSettings(i32, Option<Box<CallSettings>>, Sender<Result<(), i32>>),
-    StopCall(i32, Sender<Result<(), i32>>),
-    PrepareTransmission(i32, bool, Sender<Result<(), i32>>),
-    KillTransmission(i32, Sender<Result<(), i32>>),
-    PrepareAudioFrame(i32, Vec<u8>, Vec<i16>, Sender<Result<(Vec<u8>, Vec<i16>), (i32, Vec<u8>, Vec<i16>)>>),
-    SendAudio(i32, Vec<u8>, Sender<Result<Vec<u8>, (i32, Vec<u8>)>>),
-    GetPeerCallSettings(i32, i32, Sender<Result<Box<CallSettings>, i32>>),
-    GetPeerId(i32, i32, Sender<Result<i32, i32>>),
-    GetCallState(i32, Sender<CallState>),
-    CapabilitySupported(i32, Capability, Sender<Result<bool, i32>>),
-    GetActiveCount(Sender<Result<usize, i32>>),
-    AddAvGroupchat(Sender<Result<i32, i32>>),
-    JoinAvGroupchat(i32, Vec<u8>, Sender<Result<i32, i32>>),
-    GroupSendAudio(i32, AudioBit, Sender<Result<AudioBit, (i32, AudioBit)>>),
+    Call(i32, Option<Box<CallSettings>>, i32, OneSpaceProducer<Result<i32, i32>>), 
+    Hangup(i32, OneSpaceProducer<Result<(), i32>>),
+    Answer(i32, Option<Box<CallSettings>>, OneSpaceProducer<Result<(), i32>>),
+    Reject(i32, OneSpaceProducer<Result<(), i32>>),
+    Cancel(i32, i32, OneSpaceProducer<Result<(), i32>>),
+    ChangeSettings(i32, Option<Box<CallSettings>>, OneSpaceProducer<Result<(), i32>>),
+    StopCall(i32, OneSpaceProducer<Result<(), i32>>),
+    PrepareTransmission(i32, bool, OneSpaceProducer<Result<(), i32>>),
+    KillTransmission(i32, OneSpaceProducer<Result<(), i32>>),
+    PrepareAudioFrame(i32, Vec<u8>, Vec<i16>, OneSpaceProducer<Result<(Vec<u8>, Vec<i16>), (i32, Vec<u8>, Vec<i16>)>>),
+    SendAudio(i32, Vec<u8>, OneSpaceProducer<Result<Vec<u8>, (i32, Vec<u8>)>>),
+    GetPeerCallSettings(i32, i32, OneSpaceProducer<Result<Box<CallSettings>, i32>>),
+    GetPeerId(i32, i32, OneSpaceProducer<Result<i32, i32>>),
+    GetCallState(i32, OneSpaceProducer<CallState>),
+    CapabilitySupported(i32, Capability, OneSpaceProducer<Result<bool, i32>>),
+    GetActiveCount(OneSpaceProducer<Result<usize, i32>>),
+    AddAvGroupchat(OneSpaceProducer<Result<i32, i32>>),
+    JoinAvGroupchat(i32, Vec<u8>, OneSpaceProducer<Result<i32, i32>>),
+    GroupSendAudio(i32, AudioBit, OneSpaceProducer<Result<AudioBit, (i32, AudioBit)>>),
 }
 
 pub struct Backend {
     raw: *mut ToxAv,
     raw_tox: *mut Tox,
     internal: Box<Internal>,
-    control: Receiver<Control>,
-    _send_end: SyncSender<()>,
+    control: spsc::one_space::Consumer<Control>,
+    _send_end: spsc::one_space::Producer<()>,
 }
 
 impl Backend {
@@ -238,13 +241,13 @@ impl Backend {
         }
     }
 
-    pub fn new(tox: *mut Tox, max_calls: i32, send_end: SyncSender<()>)
-                                    -> Option<(SyncSender<Control>, Receiver<Event>)> {
+    pub fn new(tox: *mut Tox, max_calls: i32, send_end: spsc::one_space::Producer<()>)
+                        -> Option<(ControlProducer, AvEvents)> {
         let av = unsafe { toxav_new(tox, max_calls) };
         if av.is_null() {
             return None;
         }
-        let (event_send, event_recv) = channel();
+        let (event_send, event_recv) = spsc::bounded::new(64);
         let mut internal = Box::new(Internal { stop: false, events: event_send });
 
         unsafe {
@@ -267,7 +270,7 @@ impl Backend {
             rcsc!( on_self_cs_change  , av_OnSelfCSChange );
             toxav_register_audio_callback(av, Some(on_audio), ip);
         }
-        let (control_send, control_recv) = sync_channel(1);
+        let (control_send, control_recv) = spsc::one_space::new();
         let backend = Backend {
             raw: av,
             raw_tox: tox,
@@ -287,9 +290,9 @@ impl Backend {
             }
 
             'inner: loop {
-                match self.control.try_recv() {
+                match self.control.recv_async() {
                     Ok(ctrl) => self.control(ctrl),
-                    Err(TryRecvError::Disconnected) => break 'outer,
+                    Err(comm::Error::Disconnected) => break 'outer,
                     _ => break 'inner,
                 }
             }
@@ -351,7 +354,7 @@ impl Drop for Backend {
 
 struct Internal {
     stop: bool,
-    events: Sender<Event>,
+    events: spsc::bounded::Producer<Event>,
 }
 
 macro_rules! get_int {
@@ -366,7 +369,7 @@ macro_rules! get_int {
 
 macro_rules! send_or_stop {
     ($internal:ident, $event:expr) => {
-        match $internal.events.send($event) {
+        match $internal.events.send_sync($event) {
             Ok(()) => { },
             _ => $internal.stop = true,
         }

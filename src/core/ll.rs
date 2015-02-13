@@ -2,6 +2,7 @@
 
 //use std::option::{Option};
 use libc::{c_int, c_uint, c_char, c_void};
+use std::{fmt};
 
 pub const TOX_FAERR_TOOLONG:      c_int = -1;
 pub const TOX_FAERR_NOMESSAGE:    c_int = -2;
@@ -47,6 +48,18 @@ pub struct Tox_Options {
     pub proxy_type:    u8,
     pub proxy_address: [u8; 256],
     pub proxy_port:    u16,
+}
+
+impl Clone for Tox_Options {
+    fn clone(&self) -> Tox_Options {
+        *self
+    }
+}
+
+impl fmt::Debug for Tox_Options {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "literally cancer")
+    }
 }
 
 #[link(name = "toxcore")]

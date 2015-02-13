@@ -1,11 +1,12 @@
 use std;
 use std::{ptr, slice};
-use std::sync::mpsc::{channel, Sender, TryRecvError, sync_channel, Receiver, SyncSender};
 use std::old_io::{timer};
 use std::num::{Int};
 use std::raw::{Slice};
 use std::mem::{transmute};
 use std::time::{Duration};
+
+use comm::{self, spsc};
 
 use core::ll::*;
 use core::{Address, ClientId, Event, ConnectionStatus,
@@ -14,73 +15,77 @@ use core::{Address, ClientId, Event, ConnectionStatus,
 use core::Event::*;
 use core::ConnectionStatus::*;
 use core::TransferType::*;
-use av;
+use av::{AvControl, AvEvents};
+
+use super::{ControlProducer, CoreEvents};
 
 use libc::{c_void, c_uint};
 
+type OneSpaceProducer<T> = spsc::one_space::Producer<T>;
+
 pub enum Control {
-    GetAddress(Sender<Address>),
-    AddFriend(Box<Address>, String, Sender<Result<i32, Faerr>>),
-    AddFriendNorequest(Box<ClientId>, Sender<Result<i32, ()>>),
-    GetFriendNumber(Box<ClientId>, Sender<Result<i32, ()>>),
-    GetClientId(i32, Sender<Result<Box<ClientId>, ()>>),
-    DelFriend(i32, Sender<Result<(),()>>),
-    GetFriendConnectionStatus(i32, Sender<Result<ConnectionStatus, ()>>),
-    FriendExists(i32, Sender<bool>),
-    SendMessage(i32, String, Sender<Result<u32, ()>>),
-    SendAction(i32, String, Sender<Result<u32, ()>>),
-    SetName(String, Sender<Result<(),()>>),
-    GetSelfName(Sender<Result<String, ()>>),
-    GetName(i32, Sender<Result<String, ()>>),
-    SetStatusMessage(String, Sender<Result<(), ()>>),
-    SetUserStatus(UserStatus, Sender<Result<(), ()>>),
-    GetStatusMessage(i32, Sender<Result<String, ()>>),
-    GetSelfStatusMessage(Sender<Result<String, ()>>),
-    GetUserStatus(i32, Sender<Result<UserStatus, ()>>),
-    GetSelfUserStatus(Sender<Result<UserStatus, ()>>),
-    GetLastOnline(i32, Sender<Result<u64, ()>>),
-    SetUserIsTyping(i32, bool, Sender<Result<(), ()>>),
-    GetIsTyping(i32, Sender<bool>),
-    CountFriendlist(Sender<u32>),
-    GetNumOnlineFriends(Sender<u32>),
-    GetFriendlist(Sender<Vec<i32>>),
-    GetNospam(Sender<[u8; 4]>),
+    GetAddress(OneSpaceProducer<Address>),
+    AddFriend(Box<Address>, String, OneSpaceProducer<Result<i32, Faerr>>),
+    AddFriendNorequest(Box<ClientId>, OneSpaceProducer<Result<i32, ()>>),
+    GetFriendNumber(Box<ClientId>, OneSpaceProducer<Result<i32, ()>>),
+    GetClientId(i32, OneSpaceProducer<Result<Box<ClientId>, ()>>),
+    DelFriend(i32, OneSpaceProducer<Result<(),()>>),
+    GetFriendConnectionStatus(i32, OneSpaceProducer<Result<ConnectionStatus, ()>>),
+    FriendExists(i32, OneSpaceProducer<bool>),
+    SendMessage(i32, String, OneSpaceProducer<Result<u32, ()>>),
+    SendAction(i32, String, OneSpaceProducer<Result<u32, ()>>),
+    SetName(String, OneSpaceProducer<Result<(),()>>),
+    GetSelfName(OneSpaceProducer<Result<String, ()>>),
+    GetName(i32, OneSpaceProducer<Result<String, ()>>),
+    SetStatusMessage(String, OneSpaceProducer<Result<(), ()>>),
+    SetUserStatus(UserStatus, OneSpaceProducer<Result<(), ()>>),
+    GetStatusMessage(i32, OneSpaceProducer<Result<String, ()>>),
+    GetSelfStatusMessage(OneSpaceProducer<Result<String, ()>>),
+    GetUserStatus(i32, OneSpaceProducer<Result<UserStatus, ()>>),
+    GetSelfUserStatus(OneSpaceProducer<Result<UserStatus, ()>>),
+    GetLastOnline(i32, OneSpaceProducer<Result<u64, ()>>),
+    SetUserIsTyping(i32, bool, OneSpaceProducer<Result<(), ()>>),
+    GetIsTyping(i32, OneSpaceProducer<bool>),
+    CountFriendlist(OneSpaceProducer<u32>),
+    GetNumOnlineFriends(OneSpaceProducer<u32>),
+    GetFriendlist(OneSpaceProducer<Vec<i32>>),
+    GetNospam(OneSpaceProducer<[u8; 4]>),
     SetNospam([u8; 4]),
-    AddGroupchat(Sender<Result<i32, ()>>),
-    DelGroupchat(i32, Sender<Result<(), ()>>),
-    GroupPeername(i32, i32, Sender<Result<String, ()>>),
-    InviteFriend(i32, i32, Sender<Result<(), ()>>),
-    JoinGroupchat(i32, Vec<u8>, Sender<Result<i32, ()>>),
-    GroupMessageSend(i32, String, Sender<Result<(), ()>>),
-    GroupActionSend(i32, String, Sender<Result<(), ()>>),
-    GroupNumberPeers(i32, Sender<Result<i32, ()>>),
-    GroupGetNames(i32, Sender<Result<Vec<Option<String>>, ()>>),
-    CountChatlist(Sender<u32>),
-    GetChatlist(Sender<Vec<i32>>),
-    SetAvatar(AvatarFormat, Vec<u8>, Sender<Result<(), ()>>),
+    AddGroupchat(OneSpaceProducer<Result<i32, ()>>),
+    DelGroupchat(i32, OneSpaceProducer<Result<(), ()>>),
+    GroupPeername(i32, i32, OneSpaceProducer<Result<String, ()>>),
+    InviteFriend(i32, i32, OneSpaceProducer<Result<(), ()>>),
+    JoinGroupchat(i32, Vec<u8>, OneSpaceProducer<Result<i32, ()>>),
+    GroupMessageSend(i32, String, OneSpaceProducer<Result<(), ()>>),
+    GroupActionSend(i32, String, OneSpaceProducer<Result<(), ()>>),
+    GroupNumberPeers(i32, OneSpaceProducer<Result<i32, ()>>),
+    GroupGetNames(i32, OneSpaceProducer<Result<Vec<Option<String>>, ()>>),
+    CountChatlist(OneSpaceProducer<u32>),
+    GetChatlist(OneSpaceProducer<Vec<i32>>),
+    SetAvatar(AvatarFormat, Vec<u8>, OneSpaceProducer<Result<(), ()>>),
     UnsetAvatar,
-    GetSelfAvatar(Sender<Result<(AvatarFormat, Vec<u8>, Hash), ()>>),
-    RequestAvatarInfo(i32, Sender<Result<(), ()>>),
-    RequestAvatarData(i32, Sender<Result<(), ()>>),
-    SendAvatarInfo(i32, Sender<Result<(), ()>>),
-    NewFileSender(i32, u64, Path, Sender<Result<i32, ()>>),
-    FileSendControl(i32, TransferType, u8, u8, Vec<u8>, Sender<Result<(), ()>>),
-    FileSendData(i32, u8, Vec<u8>, Sender<Result<(), ()>>),
-    FileDataSize(i32, Sender<Result<i32, ()>>),
-    FileDataRemaining(i32, u8, TransferType, Sender<Result<u64, ()>>),
-    BootstrapFromAddress(String, u16, Box<ClientId>, Sender<Result<(), ()>>),
-    Isconnected(Sender<bool>),
-    Save(Sender<Vec<u8>>),
-    Load(Vec<u8>, Sender<Result<(), ()>>),
-    Raw(Sender<*mut Tox>),
-    Av(i32, Sender<Option<av::Av>>),
+    GetSelfAvatar(OneSpaceProducer<Result<(AvatarFormat, Vec<u8>, Hash), ()>>),
+    RequestAvatarInfo(i32, OneSpaceProducer<Result<(), ()>>),
+    RequestAvatarData(i32, OneSpaceProducer<Result<(), ()>>),
+    SendAvatarInfo(i32, OneSpaceProducer<Result<(), ()>>),
+    NewFileSender(i32, u64, Path, OneSpaceProducer<Result<i32, ()>>),
+    FileSendControl(i32, TransferType, u8, u8, Vec<u8>, OneSpaceProducer<Result<(), ()>>),
+    FileSendData(i32, u8, Vec<u8>, OneSpaceProducer<Result<(), ()>>),
+    FileDataSize(i32, OneSpaceProducer<Result<i32, ()>>),
+    FileDataRemaining(i32, u8, TransferType, OneSpaceProducer<Result<u64, ()>>),
+    BootstrapFromAddress(String, u16, Box<ClientId>, OneSpaceProducer<Result<(), ()>>),
+    Isconnected(OneSpaceProducer<bool>),
+    Save(OneSpaceProducer<Vec<u8>>),
+    Load(Vec<u8>, OneSpaceProducer<Result<(), ()>>),
+    Raw(OneSpaceProducer<*mut Tox>),
+    Av(i32, OneSpaceProducer<Option<(AvControl, AvEvents)>>),
 }
 
 pub struct Backend {
     raw: *mut Tox,
     internal: Box<Internal>,
-    control: Receiver<Control>,
-    av: Option<Receiver<()>>,
+    control: spsc::one_space::Consumer<Control>,
+    av: Option<spsc::one_space::Consumer<()>>,
 }
 
 impl Drop for Backend {
@@ -628,24 +633,24 @@ impl Backend {
         }
     }
 
-    fn av(&mut self, max_calls: i32) -> Option<av::Av> {
+    fn av(&mut self, max_calls: i32) -> Option<(AvControl, AvEvents)> {
         if self.av.is_some() {
             return None;
         }
-        let (send_end, recv_end) = sync_channel(0);
-        let av = av::Av::new(self.raw, max_calls, send_end);
+        let (send_end, recv_end) = spsc::one_space::new();
+        let av = AvControl::new(self.raw, max_calls, send_end);
         if av.is_some() {
             self.av = Some(recv_end);
         }
         av
     }
 
-    pub fn new(opts: &mut Tox_Options) -> Option<(SyncSender<Control>, Receiver<Event>)> {
+    pub fn new(opts: &mut Tox_Options) -> Option<(ControlProducer, CoreEvents)> {
         let tox = unsafe { tox_new(opts) };
         if tox.is_null() {
             return None;
         }
-        let (event_send, event_recv) = channel();
+        let (event_send, event_recv) = spsc::bounded::new(64);
         let mut internal = Box::new(Internal { stop: false, events: event_send });
 
         unsafe {
@@ -669,7 +674,7 @@ impl Backend {
             tox_callback_avatar_info(           tox, Some(on_avatar_info),           ip);
             tox_callback_avatar_data(           tox, Some(on_avatar_data),           ip);
         }
-        let (control_send, control_recv) = sync_channel(1);
+        let (control_send, control_recv) = spsc::one_space::new();
         let backend = Backend {
             raw: tox,
             internal: internal,
@@ -688,14 +693,14 @@ impl Backend {
             }
 
             'inner: loop {
-                match self.control.try_recv() {
+                match self.control.recv_async() {
                     Ok(ctrl) => self.control(ctrl),
-                    Err(TryRecvError::Disconnected) => break 'outer,
+                    Err(comm::Error::Disconnected) => break 'outer,
                     _ => break 'inner,
                 }
             }
 
-            if self.av.as_ref().map(|x| x.try_recv()) == Some(Err(TryRecvError::Disconnected)) {
+            if self.av.as_ref().map(|x| x.recv_async()) == Some(Err(comm::Error::Disconnected)) {
                 self.av.take();
             }
 
@@ -706,7 +711,7 @@ impl Backend {
         // If we have an AV session then we have to continue
         if let Some(ref av) = self.av {
             loop {
-                if av.try_recv() == Err(TryRecvError::Disconnected) {
+                if av.recv_async() == Err(comm::Error::Disconnected) {
                     break;
                 }
                 let interval = unsafe { tox_do_interval(self.raw) as i64 };
@@ -827,7 +832,7 @@ impl Backend {
             Control::Raw(ret) =>
                 ret.send(self.raw).unwrap(),
             Control::Av(max_calls, ret) =>
-                ret.send(self.av(max_calls)).unwrap(),
+                ret.send(self.av(max_calls)).map_err(|e|e.1).unwrap(),
         }
     }
 
@@ -851,7 +856,7 @@ impl Backend {
 
 struct Internal {
     stop: bool,
-    events: Sender<Event>,
+    events: spsc::bounded::Producer<Event>,
 }
 
 macro_rules! get_int {
@@ -866,7 +871,7 @@ macro_rules! get_int {
 
 macro_rules! send_or_stop {
     ($internal:ident, $event:expr) => {
-        match $internal.events.send($event) {
+        match $internal.events.send_sync($event) {
             Ok(()) => { },
             _ => $internal.stop = true,
         }
