@@ -5,6 +5,9 @@ use std::num::{Int};
 use std::raw::{Slice};
 use std::mem::{transmute};
 use std::time::{Duration};
+use std::path::{PathBuf};
+use std::ffi::{OsStr};
+use std::os::unix::{OsStrExt, OsStringExt};
 
 use comm::{self, spsc};
 
@@ -68,7 +71,7 @@ pub enum Control {
     RequestAvatarInfo(i32, OneSpaceProducer<Result<(), ()>>),
     RequestAvatarData(i32, OneSpaceProducer<Result<(), ()>>),
     SendAvatarInfo(i32, OneSpaceProducer<Result<(), ()>>),
-    NewFileSender(i32, u64, Path, OneSpaceProducer<Result<i32, ()>>),
+    NewFileSender(i32, u64, PathBuf, OneSpaceProducer<Result<i32, ()>>),
     FileSendControl(i32, TransferType, u8, u8, Vec<u8>, OneSpaceProducer<Result<(), ()>>),
     FileSendData(i32, u8, Vec<u8>, OneSpaceProducer<Result<(), ()>>),
     FileDataSize(i32, OneSpaceProducer<Result<i32, ()>>),
@@ -556,8 +559,8 @@ impl Backend {
     }
 
     fn new_file_sender(&mut self, friendnumber: i32, filesize: u64,
-                       filename: Path) -> Result<i32, ()> {
-        let filename = filename.into_vec();
+                       filename: PathBuf) -> Result<i32, ()> {
+        let filename = filename.into_os_string().into_vec();
         let res = unsafe {
             tox_new_file_sender(self.raw, friendnumber, filesize,
                                 filename.as_ptr(), filename.len() as u16)
@@ -681,7 +684,7 @@ impl Backend {
             control: control_recv,
             av: None,
         };
-        std::thread::Thread::spawn(move || backend.run());
+        std::thread::spawn(move || backend.run());
         Some((control_send, event_recv))
     }
 
@@ -1009,11 +1012,8 @@ extern fn on_file_send_request(_: *mut Tox, friendnumber: i32, filenumber: u8,
                                internal: *mut c_void) {
     let internal = get_int!(internal);
     let slice = to_slice(filename as *const u8, len as usize);
-    let path = match Path::new_opt(slice) {
-        Some(p) => match p.filename() {
-            Some(f) => f.to_vec(),
-            None => b"\xbf\xef".to_vec(),
-        },
+    let path = match PathBuf::new(<OsStr as OsStrExt>::from_bytes(slice)).file_name() {
+        Some(f) => f.as_bytes().to_vec(),
         None => b"\xbf\xef".to_vec(),
     };
     send_or_stop!(internal, FileSendRequest(friendnumber, filenumber, filesize, path));

@@ -1,4 +1,4 @@
-#![feature(slicing_syntax, plugin, collections, io, core, std_misc, path, libc)]
+#![feature(plugin, collections, core, std_misc, libc, old_io, path, os)]
 #![crate_type = "lib"]
 #![crate_name = "tox"]
 #![allow(non_camel_case_types)]

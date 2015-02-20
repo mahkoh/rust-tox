@@ -274,7 +274,7 @@ extern {
                                         peernumber: c_int) -> c_uint;
     pub fn tox_group_number_peers(tox: *const Tox, groupnumber: c_int) -> c_int;
     pub fn tox_group_get_names(tox: *const Tox, groupnumber: c_int,
-                               names: *mut [u8; 128us], lengths: *mut u16,
+                               names: *mut [u8; 128usize], lengths: *mut u16,
                                length: u16) -> c_int;
     pub fn tox_count_chatlist(tox: *const Tox) -> u32;
     pub fn tox_get_chatlist(tox: *const Tox, out_list: *mut i32, list_size: u32) -> u32;

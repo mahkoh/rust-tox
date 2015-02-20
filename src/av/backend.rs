@@ -278,7 +278,7 @@ impl Backend {
             control: control_recv,
             _send_end: send_end,
         };
-        std::thread::Thread::spawn(move || backend.run());
+        std::thread::spawn(move || backend.run());
         Some((control_send, event_recv))
     }
 
