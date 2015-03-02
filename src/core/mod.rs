@@ -34,8 +34,8 @@
 use std::{fmt, mem};
 use std::str::{FromStr};
 use std::path::{PathBuf};
+use std::slice::{IntSliceExt};
 use comm::{spsc};
-use rust_core::slice::{IntSliceExt};
 pub use self::Event::*;
 use av::{AvControl, AvEvents};
 
@@ -51,8 +51,8 @@ pub const ADDRESS_SIZE:                 usize = ID_CLIENT_SIZE + 6usize;
 pub const AVATAR_MAX_DATA_LENGTH:       usize = 16384usize;
 pub const HASH_LENGTH:                  usize = 32usize;
 
-type ControlProducer = spsc::one_space::Producer<backend::Control>;
-pub type CoreEvents = spsc::bounded::Consumer<Event>;
+type ControlProducer = spsc::one_space::Producer<'static, backend::Control>;
+pub type CoreEvents = spsc::bounded::Consumer<'static, Event>;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 #[repr(u8)]
@@ -739,7 +739,7 @@ impl ToxControl {
 
     #[inline]
     pub unsafe fn raw(&self) -> *mut ll::Tox {
-        forward!(self, backend::Control::Raw, ->)
+        forward!(self, backend::Control::Raw, ->).0
     }
 
     #[inline]

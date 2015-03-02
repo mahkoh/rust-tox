@@ -101,11 +101,11 @@ impl AudioBit {
 }
 
 pub struct AvControl {
-    control: spsc::one_space::Producer<backend::Control>,
+    control: spsc::one_space::Producer<'static, backend::Control>,
 }
 
-type ControlProducer = spsc::one_space::Producer<backend::Control>;
-pub type AvEvents = spsc::bounded::Consumer<Event>;
+type ControlProducer = spsc::one_space::Producer<'static, backend::Control>;
+pub type AvEvents = spsc::bounded::Consumer<'static, Event>;
 
 macro_rules! forward {
     ($slf:expr, $name:expr, ($($pp:ident),+), ->) => {{
@@ -129,7 +129,8 @@ macro_rules! forward {
 
 impl AvControl {
     #[inline]
-    pub fn new(tox: *mut Tox, max_calls: i32, send_end: spsc::one_space::Producer<()>)
+    pub fn new(tox: *mut Tox, max_calls: i32,
+               send_end: spsc::one_space::Producer<'static, ()>)
                                 -> Option<(AvControl, AvEvents)> {
         match backend::Backend::new(tox, max_calls, send_end) {
             Some((ctrl, events)) => Some((AvControl { control: ctrl }, events)),

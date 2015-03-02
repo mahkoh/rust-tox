@@ -24,7 +24,7 @@ use super::{ControlProducer, CoreEvents};
 
 use libc::{c_void, c_uint};
 
-type OneSpaceProducer<T> = spsc::one_space::Producer<T>;
+type OneSpaceProducer<T> = spsc::one_space::Producer<'static, T>;
 
 pub enum Control {
     GetAddress(OneSpaceProducer<Address>),
@@ -80,16 +80,20 @@ pub enum Control {
     Isconnected(OneSpaceProducer<bool>),
     Save(OneSpaceProducer<Vec<u8>>),
     Load(Vec<u8>, OneSpaceProducer<Result<(), ()>>),
-    Raw(OneSpaceProducer<*mut Tox>),
+    Raw(OneSpaceProducer<(*mut Tox,)>),
     Av(i32, OneSpaceProducer<Option<(AvControl, AvEvents)>>),
 }
+
+unsafe impl Send for Control { }
 
 pub struct Backend {
     raw: *mut Tox,
     internal: Box<Internal>,
-    control: spsc::one_space::Consumer<Control>,
-    av: Option<spsc::one_space::Consumer<()>>,
+    control: spsc::one_space::Consumer<'static, Control>,
+    av: Option<spsc::one_space::Consumer<'static, ()>>,
 }
+
+unsafe impl Send for Backend { }
 
 impl Drop for Backend {
     fn drop(&mut self) {
@@ -833,7 +837,7 @@ impl Backend {
             Control::Load(data, ret) =>
                 ret.send(self.load(data)).unwrap(),
             Control::Raw(ret) =>
-                ret.send(self.raw).unwrap(),
+                ret.send((self.raw,)).unwrap(),
             Control::Av(max_calls, ret) =>
                 ret.send(self.av(max_calls)).map_err(|e|e.1).unwrap(),
         }
@@ -859,7 +863,7 @@ impl Backend {
 
 struct Internal {
     stop: bool,
-    events: spsc::bounded::Producer<Event>,
+    events: spsc::bounded::Producer<'static, Event>,
 }
 
 macro_rules! get_int {

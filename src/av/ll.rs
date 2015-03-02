@@ -8,8 +8,6 @@ use av::{CallState, CallSettings, Capability};
 #[allow(missing_copy_implementations)]
 pub struct ToxAv;
 
-unsafe impl Send for *mut ToxAv { }
-
 pub type ToxAVCallback = extern fn(agent: *mut c_void, call_idx: i32, arg: *mut c_void);
 pub type ToxAvAudioCallback = extern fn(agent: *mut c_void, call_idx: i32,
                                         PCM: *const i16, size: u16, data: *mut c_void);

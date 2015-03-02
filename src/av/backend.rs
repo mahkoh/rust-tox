@@ -9,7 +9,7 @@ use std::mem::{transmute, zeroed};
 use std::{self, slice};
 use std::old_io::{timer};
 
-type OneSpaceProducer<T> = spsc::one_space::Producer<T>;
+type OneSpaceProducer<T> = spsc::one_space::Producer<'static, T>;
 
 pub enum Control {
     Call(i32, Option<Box<CallSettings>>, i32, OneSpaceProducer<Result<i32, i32>>), 
@@ -37,9 +37,11 @@ pub struct Backend {
     raw: *mut ToxAv,
     raw_tox: *mut Tox,
     internal: Box<Internal>,
-    control: spsc::one_space::Consumer<Control>,
-    _send_end: spsc::one_space::Producer<()>,
+    control: spsc::one_space::Consumer<'static, Control>,
+    _send_end: spsc::one_space::Producer<'static, ()>,
 }
+
+unsafe impl Send for Backend { }
 
 impl Backend {
     pub fn call(&mut self, friend_id: i32, settings: Option<Box<CallSettings>>,
@@ -241,7 +243,7 @@ impl Backend {
         }
     }
 
-    pub fn new(tox: *mut Tox, max_calls: i32, send_end: spsc::one_space::Producer<()>)
+    pub fn new(tox: *mut Tox, max_calls: i32, send_end: spsc::one_space::Producer<'static, ()>)
                         -> Option<(ControlProducer, AvEvents)> {
         let av = unsafe { toxav_new(tox, max_calls) };
         if av.is_null() {
@@ -354,7 +356,7 @@ impl Drop for Backend {
 
 struct Internal {
     stop: bool,
-    events: spsc::bounded::Producer<Event>,
+    events: spsc::bounded::Producer<'static, Event>,
 }
 
 macro_rules! get_int {
