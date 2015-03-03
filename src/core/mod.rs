@@ -739,7 +739,7 @@ impl ToxControl {
 
     #[inline]
     pub unsafe fn raw(&self) -> *mut ll::Tox {
-        forward!(self, backend::Control::Raw, ->).0
+        forward!(self, backend::Control::Raw, ->)
     }
 
     #[inline]

@@ -80,7 +80,7 @@ pub enum Control {
     Isconnected(OneSpaceProducer<bool>),
     Save(OneSpaceProducer<Vec<u8>>),
     Load(Vec<u8>, OneSpaceProducer<Result<(), ()>>),
-    Raw(OneSpaceProducer<(*mut Tox,)>),
+    Raw(OneSpaceProducer<*mut Tox>),
     Av(i32, OneSpaceProducer<Option<(AvControl, AvEvents)>>),
 }
 
@@ -837,7 +837,7 @@ impl Backend {
             Control::Load(data, ret) =>
                 ret.send(self.load(data)).unwrap(),
             Control::Raw(ret) =>
-                ret.send((self.raw,)).unwrap(),
+                ret.send(self.raw).unwrap(),
             Control::Av(max_calls, ret) =>
                 ret.send(self.av(max_calls)).map_err(|e|e.1).unwrap(),
         }

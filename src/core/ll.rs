@@ -3,6 +3,7 @@
 //use std::option::{Option};
 use libc::{c_int, c_uint, c_char, c_void};
 use std::{fmt};
+use comm::{Sendable};
 
 pub const TOX_FAERR_TOOLONG:      c_int = -1;
 pub const TOX_FAERR_NOMESSAGE:    c_int = -2;
@@ -22,7 +23,7 @@ pub const TOX_USERSTATUS_INVALID: c_uint = 3;
 #[allow(missing_copy_implementations)]
 pub struct Tox;
 
-unsafe impl Send for (*mut Tox,) { }
+unsafe impl Sendable for *mut Tox { }
 
 pub const TOX_CHAT_CHANGE_PEER_ADD:  c_uint = 0;
 pub const TOX_CHAT_CHANGE_PEER_DEL:  c_uint = 1;
