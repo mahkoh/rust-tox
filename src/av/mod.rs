@@ -33,7 +33,7 @@ pub enum CallType {
 #[derive(Copy, Clone, Debug, FromPrimitive)]
 pub enum CallState {
     NonExistent = -1,
-    Inviting,
+    Inviting = 0,
     Starting,
     Active,
     Hold,
